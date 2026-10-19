@@ -33,6 +33,12 @@ export const Navbar = () => {
 
       <div className="flex items-center gap-3">
         <Link
+          href="/login"
+          className="hidden rounded-xl bg-blue-600 px-5 py-2.5 font-semibold text-white transition hover:bg-blue-700 sm:inline-flex"
+        >
+          Log in
+        </Link>
+        <Link
           href="/contact"
           className="hidden rounded-xl bg-blue-600 px-5 py-2.5 font-semibold text-white transition hover:bg-blue-700 sm:inline-flex"
         >
@@ -91,7 +97,16 @@ export const Navbar = () => {
               </Link>
             </li>
           ))}
-
+          <li>
+            <Link
+              href="/login"
+              tabIndex={isOpen ? 0 : -1}
+              onClick={() => setIsOpen(false)}
+              className="block rounded-lg bg-blue-600 px-4 py-3 text-center font-semibold text-white transition-colors duration-200 hover:bg-blue-700"
+            >
+              Log in
+            </Link>
+          </li>
           <li>
             <Link
               href="/contact"

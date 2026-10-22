@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { NavbarLinks } from '@/data/mock/navbar';
 import Link from 'next/link';
+import { NavbarLinks } from '@/data/mock/navbar';
+import type { NavbarProps } from '@/types/types';
 
-export const Navbar = () => {
+export const Navbar = ({ links = NavbarLinks }: NavbarProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -20,7 +21,7 @@ export const Navbar = () => {
 
       <nav className="hidden md:block">
         <ul className="flex items-center gap-5 lg:gap-7">
-          {NavbarLinks.map((link) => (
+          {links.map((link) => (
             <li
               key={link.id}
               className="text-sm font-bold text-slate-600 transition hover:text-blue-700 lg:text-base"
@@ -85,7 +86,7 @@ export const Navbar = () => {
         }`}
       >
         <ul className="flex flex-col gap-2">
-          {NavbarLinks.map((link) => (
+          {links.map((link) => (
             <li key={link.id}>
               <Link
                 href={link.href}

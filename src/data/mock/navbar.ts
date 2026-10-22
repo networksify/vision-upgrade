@@ -1,6 +1,8 @@
-export const NavbarLinks = [
-  { id: 0, title: 'Home', href: '#home' },
-  { id: 1, title: 'About Vision', href: '#about' },
-  { id: 1, title: 'Services', href: '#services' },
-  { id: 1, title: 'Contact Us', href: '#contact' },
+import type { NavLink } from '@/types/types';
+
+export const NavbarLinks: NavLink[] = [
+  { id: 1, title: 'Home', href: '/#home' },
+  { id: 2, title: 'About Vision', href: '/#about' },
+  { id: 3, title: 'Services', href: '/#services' },
+  { id: 4, title: 'Contact Us', href: '/#contact' },
 ];

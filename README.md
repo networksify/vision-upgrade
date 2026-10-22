@@ -1,679 +1,430 @@
 # Vision Upgrade
 
-Marketing site for **Vision Upgrade (VUSoft)** — three connected practices: VU Kids learning programs, our own software and technology work, and digital marketing.
+Two products, one Next.js application:
 
-The site is currently **front-end only**. All content is served from local mock files so that copy, sections and lists can be changed without touching a single component.
+1. **The public marketing site** — Vision Upgrade (VUSoft) presents three connected practices: **VU Kids** learning programs, **software and technology** work, and **digital marketing**.
+2. **The internal admin dashboard** — a sign-in-protected workspace for managing administrator accounts, publishing courses and internal messages.
 
-The same app also ships the internal **admin dashboard** at `/dashboard`. It is documented separately in [§11](#11-admin-dashboard), which includes the demo sign-in details and the steps for connecting a real backend for administrator accounts and courses.
+Both are **front-end only** today. Every piece of content and every record is local mock data, clearly labelled as such. Nothing is sent to a server, nothing is stored in a database, and no real person, course or conversation is represented.
 
-> **Audience:** this document is written for a backend developer joining the project. Section [3. Mock data system](#3-mock-data-system) explains how the public site's content layer works, and [§11.6](#116-connecting-a-real-backend) explains how to swap the dashboard's mock services for real endpoints.
-
----
-
-## Table of contents
-
-1. [Tech stack](#1-tech-stack)
-2. [Getting started](#2-getting-started)
-3. [Mock data system](#3-mock-data-system)
-4. [Project structure](#4-project-structure)
-5. [Data contracts](#5-data-contracts)
-6. [Component reference](#6-component-reference)
-7. [Routes](#7-routes)
-8. [Replacing mocks with a real API](#8-replacing-mocks-with-a-real-api)
-9. [Conventions and gotchas](#9-conventions-and-gotchas)
-10. [Current status](#10-current-status)
-11. [Admin dashboard](#11-admin-dashboard)
+- **New here?** Start with [§2 Quick start](#2-quick-start) and [§3 Demo sign-in](#3-demo-sign-in).
+- **Connecting a backend?** Read [§10 Connecting a backend](#10-connecting-a-backend).
+- **Reviewing the security story?** Read [§9 Authentication](#9-authentication-and-route-protection) and [§11 Security posture](#11-security-posture).
 
 ---
 
-## 1. Tech stack
+## Contents
 
-| Concern      | Choice                                              |
-| ------------ | --------------------------------------------------- |
-| Framework    | Next.js 16.4.2 (App Router, Turbopack)              |
-| UI           | React 19.3, Tailwind CSS 4 (`@tailwindcss/turbopack`)|
-| Components   | shadcn/ui (Radix primitives) for the dashboard — see `ATTRIBUTION.md` |
-| Language     | TypeScript 5 (`strict: true`)                        |
-| Fonts        | Lato (via `globals.css`), Geist (via `next/font`)    |
-| Validation   | zod 4 (forms + shareable with the backend)           |
-| Icons        | lucide-react (dashboard), local SVG set (public site)|
-| Package mgr  | Bun (`bun.lock`)                                     |
-
-`next.config.ts` enables two Next.js 16 features that affect how you write code here:
-
-- **`cacheComponents: true`** — the app is statically prerendered by default. Any code that reads request-time data (cookies, headers, `Date.now()`, uncached fetches) must live inside a `Suspense` boundary or the build will fail. All current pages are fully static.
-- **`partialPrefetching: true`** — enables prefetching of partial route trees.
+1. [Quick start](#1-quick-start)
+2. [Demo sign-in](#2-demo-sign-in)
+3. [Routes](#3-routes)
+4. [Tech stack](#4-tech-stack)
+5. [Architecture](#5-architecture)
+6. [The public site](#6-the-public-site)
+7. [The admin dashboard](#7-the-admin-dashboard)
+8. [Design system](#8-design-system)
+9. [Authentication and route protection](#9-authentication-and-route-protection)
+10. [Connecting a backend](#10-connecting-a-backend)
+11. [Security posture](#11-security-posture)
+12. [Conventions and gotchas](#12-conventions-and-gotchas)
+13. [Verification](#13-verification)
+14. [Project structure](#14-project-structure)
+15. [Attribution](#15-attribution)
+16. [Status](#16-status)
 
 ---
 
-## 2. Getting started
+## 1. Quick start
+
+Requirements: **Node.js 20.9+** (or **Bun 1.4+**, which is what the repo uses) and a modern browser.
 
 ```bash
 bun install
-bun run dev      # http://localhost:3000
+bun run dev        # http://localhost:3000
 ```
 
 Other scripts:
 
-```bash
-bun run build    # production build + typecheck
-bun run lint     # eslint (eslint-config-next, core-web-vitals + typescript)
-bun run start    # serve the production build
-```
+| Command            | What it does                                            |
+| ------------------ | ------------------------------------------------------- |
+| `bun run dev`      | Dev server with Turbopack and React Fast Refresh        |
+| `bun run build`    | Production build + TypeScript check + static generation |
+| `bun run start`    | Serve the production build                              |
+| `bun run lint`     | ESLint (`eslint-config-next`, core-web-vitals + TS)     |
 
-Typecheck only:
+Typecheck on its own:
 
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
 ```
 
-There are currently **no environment variables** and no `.env` files. The first backend integration will need to add them (see [§8](#8-replacing-mocks-with-a-real-api)).
+There are **no environment variables** today and no `.env` file. The backend integration in [§10](#10-connecting-a-backend) introduces the first ones.
+
+> The app is configured for static prerendering (`cacheComponents: true`). Any code that reads request data — `cookies()`, `headers()`, `Date.now()`, uncached `fetch` — must sit behind a `Suspense` boundary or the build fails. Every page currently ships static.
 
 ---
 
-## 3. Mock data system
-
-### The one rule
-
-> **Components never contain content.** Every string, list, link, stat and form field lives in `src/data/mock/*.ts`.
-
-A component only knows *how* to render a shape. The *what* comes from a mock file. This means marketing can change the homepage without a component change, and the backend can later replace the mock files with API calls without rewriting UI code.
-
-### How it is wired
-
-Each mock file exports one typed object. The object is spread directly into the component as props:
-
-```tsx
-// src/components/layout/HomeComponent.tsx
-import { HeroSection } from '@/data/mock/hero';
-import { AboutSection } from '@/data/mock/about';
-
-export const HomeComponent = () => (
-  <main>
-    <Home {...HeroSection} />
-    <About {...AboutSection} />
-  </main>
-);
-```
-
-```tsx
-// src/data/mock/hero.ts
-export const HeroSection: HeroProps = {
-  badge: 'AI Vision Platform',
-  title: 'Give your cameras the power to',
-  titleAccent: 'understand',
-  // ...
-};
-```
-
-The type comes from `src/types/types.ts`, so **TypeScript enforces that the mock file and the component agree**. If you rename a prop in the mock file, the component immediately errors until it is updated.
-
-### The mock files
-
-| File                       | Type                | Feeds                                    |
-| -------------------------- | ------------------- | ---------------------------------------- |
-| `src/data/mock/navbar.ts` | `NavLink[]`         | `Navbar` — primary + mobile navigation   |
-| `src/data/mock/hero.ts`   | `HeroProps`         | `Home` — hero section + preview visual  |
-| `src/data/mock/about.ts`  | `AboutProps`        | `About` — section + highlight card       |
-| `src/data/mock/services.ts`| `ServicesProps`    | `Services` — service cards + CTA band    |
-| `src/data/mock/contact.ts`| `ContactProps`      | `Contact` — details, side card, form     |
-| `src/data/mock/footer.ts` | `FooterProps`       | `Footer` — brand, link columns, legal    |
-
-> `src/data/mock/courses.ts` and `src/components/layout/Sidebar.tsx` are **empty placeholders** for future work. Nothing imports them.
-
-### Common recipes
-
-**Change copy** — edit the string in the mock file. Nothing else.
-
-**Add a service card** — append to `ServicesSection.items`. The grid is `sm:grid-cols-2 lg:grid-cols-3`, so it reflows automatically. Give it a **unique `id`** (see [§9](#9-conventions-and-gotchas)).
-
-**Add a nav link** — append to `NavbarLinks` in `navbar.ts`. It appears in both the desktop and mobile menus automatically. Use a root-relative hash (`/#services`) so it also works from `/contact`.
-
-**Add a footer column** — append to `FooterSection.columns`, each with a `links` array.
-
-**Change the contact form** — edit `ContactSection.form.fields`. The form is generated from this array:
-
-```ts
-{
-  id: 'contact-company',        // used as the DOM id + <label htmlFor>
-  name: 'company',              // form field name (payload key)
-  label: 'Company',
-  type: 'text',                 // 'text' | 'email' | 'tel' | 'textarea'
-  placeholder: 'Acme Industries',
-  required: false,
-  autoComplete: 'organization',
-  fullWidth: true,              // false = shares a row with the next field
-}
-```
-
-Adding, removing or reordering fields requires no component change. `fullWidth: false` fields are paired two-per-row on `sm:` and up.
-
-**Add a new icon** — add the name to `IconName` in `src/types/types.ts`, then add its SVG paths to the `paths` record in `src/components/ui/Icon.tsx`. Available names: `scan`, `cpu`, `shield`, `zap`, `chart`, `layers`, `mail`, `phone`, `mapPin`, `clock`.
-
----
-
-## 4. Project structure
-
-```
-src/
-├── app/                              # Next.js App Router — routing only
-│   ├── layout.tsx                    # Root layout: fonts, metadata, scroll behaviour
-│   ├── page.tsx                      # "/" landing page — composes the sections
-│   ├── globals.css                   # Tailwind import, @theme tokens, shadcn tokens
-│   ├── contact/page.tsx              # "/contact" — dedicated contact page
-│   ├── (auth)/login/page.tsx         # "/login" — dashboard sign-in
-│   ├── dashboard/                    # admin dashboard (see §11.4)
-│   │   ├── layout.tsx                # shell: sidebar, header, providers, auth guard
-│   │   ├── page.tsx                  # overview
-│   │   ├── accounts/page.tsx
-│   │   ├── courses/page.tsx
-│   │   ├── chat/page.tsx
-│   │   └── settings/page.tsx
-│   └── employees/page.tsx            # "/employees" — stub
-│
-├── components/
-│   ├── ui/                           # Public-site primitives (Icon, ButtonLink, …)
-│   │   ├── Icon.tsx                  # SVG icon set, keyed by IconName
-│   │   ├── ButtonLink.tsx            # CTA link, variants: primary | secondary | plain
-│   │   ├── ArrowLink.tsx             # "text + arrow" inline link
-│   │   ├── SectionHeading.tsx        # eyebrow + h2 + description
-│   │   ├── FormField.tsx             # Renders one field from a FormField object
-│   │   ├── HeroPreview.tsx           # The mock "live feed" card in the hero
-│   │   └── …                         # shadcn/ui components (button, dialog, table, …)
-│   │
-│   ├── home/                         # Landing page sections — all props-driven
-│   │   ├── Home.tsx                  # hero            ← HeroProps
-│   │   ├── About.tsx                 # about           ← AboutProps
-│   │   ├── Services.tsx              # services grid   ← ServicesProps
-│   │   └── Contact.tsx               # contact + form  ← ContactProps  ('use client')
-│   │
-│   ├── auth/                         # session provider, route guard, sign-in form
-│   ├── dashboard/                    # sidebar, header, overview widgets
-│   ├── admin/                        # admin accounts feature
-│   ├── courses/                      # courses feature
-│   ├── chat/                         # company chat feature
-│   ├── settings/                     # settings feature
-│   │
-│   └── layout/
-│       ├── Navbar.tsx                # responsive nav  ← NavbarProps  ('use client')
-│       ├── Footer.tsx                # site footer     ← FooterProps
-│       ├── HomeComponent.tsx         # composes the four landing sections
-│       └── Sidebar.tsx               # empty placeholder
-│
-├── data/
-│   └── mock/                         # ← ALL PUBLIC-SITE CONTENT LIVES HERE
-│       ├── navbar.ts  hero.ts  about.ts
-│       ├── services.ts  contact.ts  footer.ts
-│       └── courses.ts                # empty placeholder
-│
-├── lib/                              # dashboard data layer (see §11.4)
-│   ├── services/                     # contracts + DashboardServices type
-│   ├── providers/                    # mock providers + ServicesProvider
-│   ├── validation/                   # zod schemas
-│   ├── labels.ts  format.ts
-│   └── utils.ts                      # cn()
-│
-└── types/
-    ├── types.ts                      # Public-site prop shapes
-    └── dashboard.ts                  # Dashboard domain models
-```
-
-**Directory intent**
-
-| Folder            | Rule                                                                    |
-| ----------------- | ----------------------------------------------------------------------- |
-| `app/`            | Routing and page composition only. No business logic, no content.       |
-| `components/ui/`  | Zero project-specific knowledge. Reusable anywhere.                     |
-| `components/home/`| Landing page sections. Know their props shape, not the copy.           |
-| `components/layout/`| Chrome shared across pages (navbar, footer).                           |
-| `components/<feature>/` | Dashboard screens. Read data through `useServices()` only.        |
-| `data/mock/`      | The public-site content layer. The only files a copywriter touches.    |
-| `lib/services/`   | Contracts. The only files a backend integration rewrites against.      |
-| `lib/providers/`  | Provider implementations. The only files that know where data lives.   |
-| `types/`          | Shared shapes. No imports, no runtime code.                            |
-
----
-
-## 5. Data contracts
-
-These are the exact shapes the API must return. They are the TypeScript types in `src/types/types.ts`, repeated here as JSON.
-
-### `HeroProps`
-
-```jsonc
-{
-  "badge": "AI Vision Platform",
-  "badgeActive": true,                 // renders the green status dot
-  "title": "Give your cameras the power to",
-  "titleAccent": "understand",         // rendered in blue
-  "description": "…",
-  "primaryCta":   { "label": "Get in Touch",    "href": "/contact" },
-  "secondaryCta": { "label": "Explore Services","href": "/#services" },
-  "stats": [                           // 2 cols mobile, 4 cols desktop
-    { "id": 1, "label": "Models deployed", "value": "240+" }
-  ],
-  "visual": {
-    "status": "Live feed",
-    "caption": "Feed 01 - Line A - 1080p",
-    "detections": [                     // bounding boxes over the preview image
-      {
-        "id": 1,
-        "label": "Person 0.98",         // label already includes the confidence
-        "confidence": 0.98,
-        "box": { "left": "16%", "top": "22%", "width": "30%", "height": "44%" },
-        "borderClass": "border-blue-400",   // Tailwind class, literal string
-        "labelClass":  "bg-blue-700"        // Tailwind class, literal string
-      }
-    ],
-    "metrics": [                        // progress bars
-      { "id": 1, "label": "Detection accuracy", "value": 98, "barClass": "bg-blue-600" }
-    ]
-  }
-}
-```
-
-### `AboutProps`
-
-```jsonc
-{
-  "eyebrow": "About Vision",
-  "title": "A platform built around how teams actually work",
-  "description": "…",
-  "card": {                             // the dark gradient panel
-    "eyebrow": "Our approach",
-    "quote": "Every model we ship has to survive a real production week, not a demo.",
-    "body": "…",
-    "stats": [ { "id": 1, "label": "Founded", "value": "2019" } ]
-  },
-  "content": {
-    "title": "What you get with Vision Upgrade",
-    "description": "…",
-    "link": { "label": "Talk to our team", "href": "/contact" }
-  },
-  "values": [                           // checklist under the heading
-    { "id": 1, "icon": "shield", "title": "Accuracy you can audit", "description": "…" }
-  ]
-}
-```
-
-### `ServicesProps`
-
-```jsonc
-{
-  "eyebrow": "Services",
-  "title": "Everything you need to put vision into production",
-  "description": "…",
-  "items": [                            // one card per entry
-    { "id": 1, "icon": "scan", "title": "Vision Analytics", "description": "…" }
-  ],
-  "cta": {
-    "title": "Not sure which module fits?",
-    "description": "…",
-    "link": { "label": "Request a demo", "href": "/contact" }
-  }
-}
-```
-
-### `ContactProps`
-
-```jsonc
-{
-  "eyebrow": "Contact Us",
-  "title": "Let us look at your use case",
-  "description": "…",
-  "details": [                          // left column, contact methods
-    { "id": 1, "icon": "mail", "label": "Email", "value": "hello@visionupgrade.com",
-      "href": "mailto:hello@visionupgrade.com" }   // href optional — omit for plain text
-  ],
-  "sideCard": {
-    "title": "Prefer a live walkthrough?",
-    "description": "…",
-    "link": { "label": "Create an account", "href": "/login" }
-  },
-  "form": {
-    "submitLabel": "Send message",
-    "successTitle": "Message received",
-    "successMessage": "…",
-    "resetLabel": "Send another message",
-    "fields": [                         // see §3 for the field schema
-      { "id": "contact-name", "name": "name", "label": "Your name",
-        "type": "text", "placeholder": "Jordan Reyes", "required": true,
-        "autoComplete": "name" }
-    ]
-  }
-}
-```
-
-### `FooterProps`
-
-```jsonc
-{
-  "initial": "V",                       // logo glyph
-  "name": "Vision Upgrade",
-  "description": "…",
-  "columns": [
-    { "id": 1, "title": "Product",
-      "links": [ { "id": 1, "title": "Vision Analytics", "href": "/#services" } ] }
-  ],
-  "copyright": "2026 Vision Upgrade. All rights reserved.",
-  "tagline": "Built for teams that ship machine vision to production."
-}
-```
-
----
-
-## 6. Component reference
-
-| Component              | Props type        | Notes                                                              |
-| ---------------------- | ----------------- | ------------------------------------------------------------------ |
-| `Navbar`               | `NavbarProps`     | `'use client'`. `links` is optional — defaults to `NavbarLinks`. Renders desktop + mobile menus from the same array. |
-| `Home`                 | `HeroProps`       | Server component. Renders `HeroPreview` from `visual`.             |
-| `About`                | `AboutProps`      | Server component.                                                   |
-| `ServicesSection`      | `ServicesProps`   | Server component.                                                   |
-| `Contact`              | `ContactProps`    | `'use client'`. Owns the form submit state only.                   |
-| `Footer`               | `FooterProps`     | Server component.                                                   |
-| `HomeComponent`        | —                 | Composes `Home` + `About` + `ServicesSection` + `Contact` inside a `<main>`. |
-| `Icon`                 | `{ name, className }` | SVG sprite set. `name` is one of `IconName`.                   |
-| `ButtonLink`           | `{ cta, variant, size, className }` | `variant`: `primary` \| `secondary` \| `plain`. |
-| `ArrowLink`            | `{ cta, className }` | Inline link with a trailing arrow.                                |
-| `SectionHeading`       | `SectionHeadingProps` | `align`: `left` \| `center` (default `center`).              |
-| `FormField`            | `{ field, className }` | Renders one `FormField`.                                        |
-| `HeroPreview`          | `{ visual }`      | The mock live-feed card.                                           |
-
----
-
-## 7. Routes
-
-| Route          | Page                        | Status                                                       |
-| -------------- | --------------------------- | ------------------------------------------------------------ |
-| `/`            | `app/page.tsx`              | Landing page: navbar → hero → about → services → contact → footer. Static. |
-| `/contact`     | `app/contact/page.tsx`      | Navbar → contact section → footer. Static. Shares `ContactSection` and `FooterSection` with `/`. |
-| `/login`       | `app/(auth)/login/page.tsx` | Dashboard sign-in. Redirects to `?next=` (or `/dashboard`) when already signed in. |
-| `/dashboard`   | `app/dashboard/page.tsx`    | Overview — stat cards, recent course/admin activity, quick actions. |
-| `/dashboard/accounts` | `app/dashboard/accounts/page.tsx` | Administrator accounts: search, filter, sort, page, create, edit, enable/disable. |
-| `/dashboard/courses`  | `app/dashboard/courses/page.tsx`  | Course catalogue: search, filter, create, edit, publish/unpublish, detail drawer. |
-| `/dashboard/chat`     | `app/dashboard/chat/page.tsx`     | Company chat — mock conversations only. |
-| `/dashboard/settings` | `app/dashboard/settings/page.tsx` | Signed-in account details and prototype/backend notes. |
-| `/employees`   | `app/employees/page.tsx`    | Stub — placeholder markup only.                              |
-
-Section anchors are `/#home`, `/#about`, `/#services`, `/#contact` — each `<section>` carries the matching `id` and a `scroll-mt-24` (96px) offset so the target is not hidden under the header.
-
----
-
-## 8. Replacing mocks with a real API
-
-The components already accept plain data, so the swap is confined to the data layer.
-
-**Step 1 — add the endpoints.** For example `src/lib/api/`:
-
-```ts
-// src/lib/api/hero.ts
-import { HeroProps } from '@/types/types';
-
-export async function getHero(): Promise<HeroProps> {
-  const res = await fetch(`${process.env.API_URL}/hero`, {
-    next: { revalidate: 300 },
-  });
-  return res.json();
-}
-```
-
-**Step 2 — fetch in the page** and spread the result into the same components:
-
-```tsx
-// src/app/page.tsx
-import { Home } from '@/components/home/Home';
-import { getHero } from '@/lib/api/hero';
-import { FooterSection } from '@/data/mock/footer';   // still a mock for now
-
-export default async function HomePage() {
-  const hero = await getHero();
-
-  return (
-    <>
-      <Navbar />
-      <main>
-        <Home {...hero} />
-        {/* …other sections… */}
-      </main>
-      <Footer {...FooterSection} />
-    </>
-  );
-}
-```
-
-**Step 3 — keep the types as the contract.** `src/types/types.ts` is the single source of truth for both the mock and the API response. If the API shape changes, update the type first — TypeScript will then flag every mock file and component that needs updating.
-
-Notes for the backend:
-
-- The mock files and the API should return **identical shapes** so pages can be migrated one section at a time.
-- `id` on every list item is required — it is the React key (see [§9](#9-conventions-and-gotchas)).
-- `icon` is a string enum, not an SVG or icon URL. If the API must return arbitrary icons, extend `IconName` and `Icon.tsx`, or switch `Icon` to render an image.
-- `borderClass`, `labelClass` and `barClass` are **literal Tailwind class strings** chosen by the API. This works because Tailwind scans source files, but the class must appear verbatim somewhere in `src/` or it will not be generated. Prefer keeping the palette fixed on the front end and sending a semantic value (e.g. `"tone": "blue"`) if the API should not dictate styling.
-- The contact form currently has **no backend**. `Contact` calls `preventDefault()` and flips to a success state locally. Wire it to a server action or an API route when the endpoint exists.
-
----
-
-## 9. Conventions and gotchas
-
-**React keys must be unique per list.** Every list item in the mock data carries an `id`, and that `id` is used as the React `key`. Duplicated ids produce `Encountered two children with the same key` warnings and can cause items to be dropped or duplicated. Always give new items a unique `id`.
-
-**Never build Tailwind class names dynamically.** `bg-${color}-600` will not be generated by Tailwind's scanner. Store complete class names (`'bg-blue-600'`) in the mock data, as `barClass` / `borderClass` / `labelClass` already do.
-
-**Tailwind v4 emits `lab()` / `oklch()` colours.** `getComputedStyle` returns `lab(…)` rather than `rgb(…)` for Tailwind's default palette. Anything that parses colours at runtime (contrast checks, canvas sampling, screenshot tooling) must handle those formats.
-
-**Colour contrast is enforced.** All text meets WCAG AA. Lighthouse currently scores 100 / 100 / 100. If you change a colour, re-check the affected text.
-
-**Section anchors need an `id` and `scroll-mt-24`.** Anchor links are `/#section-id`; the `id` lives on the `<section>`, and `scroll-mt-24` keeps the heading clear of the header.
-
-**`cacheComponents: true` is on.** Request-time data (`cookies()`, `headers()`, `Date.now()`, uncached `fetch`) inside a server component requires a `Suspense` boundary, or the build fails. Prefer static data or `next: { revalidate: n }`.
-
-**Dashboard pages set `export const instant = false`.** Each `/dashboard` page is wrapped in a client-side `AuthGuard` that renders the session-check screen instead of its children during prerendering. Next.js 16 can't validate instant navigation for a segment that isn't rendered, so the page opts out explicitly. Remove the export only if the guard moves server-side.
-
-**`react-hooks/set-state-in-effect` is disabled for `src/components/**`.** Feature screens load data in an effect and set state when it resolves; the rule is kept on for `src/lib`, `src/hooks` and the public site, where it still catches accidental cascading renders.
-
-**The copyright year is hard-coded** (`'2026 Vision Upgrade. All rights reserved.'` in `footer.ts`) rather than computed, to keep the page fully static.
-
-**`scroll-behavior: smooth` is set globally** in `globals.css` (`* { scroll-behavior: smooth }`). Anchor navigation therefore animates rather than jumping. The root `<html>` also carries `data-scroll-behavior="smooth"` — Next.js 16 uses it to disable smooth scrolling during route transitions (it warns in the console without it).
-
-**Images:** the public site uses `next/image` for the logo and hero (local files, no remote hosts configured). Course thumbnails in the dashboard are arbitrary URLs and render with `unoptimized`, which bypasses the remote-host allowlist — if you switch them to optimised `next/image`, add the host to `next.config.ts` and validate the URL server-side.
-
----
-
-## 10. Current status
-
-**Done**
-
-- Responsive navbar (desktop + mobile drawer) with working anchors
-- Landing page with hero, about, services and contact sections
-- `/contact` route sharing the same contact section and footer
-- Footer with link columns
-- Contact form with client-side validation and a success state
-- Mock data layer, typed prop contracts, reusable UI primitives
-- Lighthouse 100 / 100 / 100 (accessibility / best-practices / SEO), clean typecheck, lint and build
-
-**Not done**
-
-- No backend, no API calls, no environment variables
-- Contact form submission is not wired to anything
-- The dashboard runs on in-browser mock services (see [§11.7](#117-security-limits-of-the-prototype))
-- `/employees` is placeholder markup
-- `src/components/layout/Sidebar.tsx` and `src/data/mock/courses.ts` are empty placeholders
-- No test suite, no CI, no error boundary
-- No analytics, no cookie consent, no SEO metadata beyond titles and descriptions
-- No image assets or `next/image` usage on the public site
-
----
-
-## 11. Admin dashboard
-
-The internal workspace lives in the same Next.js app as the public site: same design tokens, same component library, same build. It is a separate route group under `/dashboard`, behind a sign-in screen at `/login`.
-
-Everything it shows today is **demo data**. Nothing is sent anywhere, nothing is stored on a server, and no real Vision Upgrade person, course or conversation is represented.
-
-### 11.1 Demo sign-in
-
-| Username      | Role                | Account status |
-| ------------- | ------------------- | -------------- |
-| `demo.owner`  | Owner               | Active         |
-| `demo.admin`  | Administrator       | Active         |
-| `demo.editor` | Content editor      | Active         |
+## 2. Demo sign-in
+
+The dashboard is gated by a sign-in screen at `/login`.
+
+| Username      | Role             | Account status |
+| ------------- | ---------------- | -------------- |
+| `demo.owner`  | Owner            | Active         |
+| `demo.admin`  | Administrator    | Active         |
+| `demo.editor` | Content editor   | Active         |
 
 **Password: any value of 8 characters or more — for example `demo1234`.**
 
-All three accounts accept that same "password", and it is not a credential. There is no password stored, hashed, compared or seeded anywhere in this repository, and no password is written to `localStorage`, `sessionStorage` or any `NEXT_PUBLIC_*` variable. The demo auth adapter only checks that the username exists in the seed data and that the account is active; the form itself enforces the 8-character minimum. This is deliberate: a fake password would teach the wrong lesson about what security means. See [§11.7](#117-security-limits-of-the-prototype) for what has to change before real use.
+That is not a credential. There is **no password** stored, hashed, compared or seeded anywhere in this repository, and no password is written to `localStorage`, `sessionStorage` or a `NEXT_PUBLIC_*` variable. The demo adapter checks only that the username exists in the seed data and that the account is active; the form enforces the 8-character minimum. Inventing a fake password would have implied a security model that does not exist.
 
-> **Session behaviour:** the session is a JavaScript variable in the tab. Reloading the page signs you out. That is intentional — there is no cookie to forge in the prototype.
+The sign-in screen states this in a "Prototype mode" panel and offers the three usernames as one-click fill buttons.
 
-### 11.2 Running the dashboard
+> **Session behaviour:** the session is a JavaScript value in the tab. Reloading signs you out. That is deliberate — there is no cookie to forge.
 
-Nothing extra to install or configure:
+Disabled demo accounts (`demo.guest`, `demo.platform`) exist so the accounts table can show the disabled state; they are rejected at sign-in.
 
-```bash
-bun install
-bun run dev
-# open http://localhost:3000/login
-```
+---
 
-Sign in with `demo.owner` and any 8+ character password. The public site stays available at `/`.
+## 3. Routes
 
-### 11.3 Screens
+| Route                 | Page                                  | Notes |
+| --------------------- | ------------------------------------- | ----- |
+| `/`                   | `src/app/page.tsx`                    | Landing page: hero → programs intro → VU Kids → software → digital marketing → about → why us → contact, plus navbar and footer. Static. |
+| `/contact`            | `src/app/contact/page.tsx`            | Dedicated contact page sharing the same sections and footer. Static. |
+| `/login`              | `src/app/(auth)/login/page.tsx`       | Dashboard sign-in. Honours `?next=` (same-origin paths only) and forwards signed-in visitors to the dashboard. |
+| `/dashboard`          | `src/app/dashboard/page.tsx`          | Overview: account and course totals, recent activity, quick actions. |
+| `/dashboard/accounts` | `src/app/dashboard/accounts/page.tsx` | Administrator accounts: search, filters, sorting, pagination, create, edit, enable/disable. |
+| `/dashboard/courses`  | `src/app/dashboard/courses/page.tsx`  | Course catalogue: search, filters, create, edit, publish/unpublish, detail drawer. |
+| `/dashboard/chat`     | `src/app/dashboard/chat/page.tsx`     | Company chat — mock conversations only. |
+| `/dashboard/settings` | `src/app/dashboard/settings/page.tsx` | Signed-in account, prototype limits, backend notes. |
+| `/employees`          | `src/app/employees/page.tsx`          | Unfinished placeholder. Not linked from anywhere; leave it alone until the feature is specified. |
 
-| Screen | Route | What works |
-| ------ | ----- | ---------- |
-| Overview | `/dashboard` | Total administrator accounts (with active/disabled split), total courses (with draft/published split), recent course activity, recent admin activity, quick actions. All counts are derived from the service layer, not hardcoded. |
-| Admin accounts | `/dashboard/accounts` | Debounced search, role/status filters, sortable columns, pagination with page sizes, create, edit, enable/disable behind a confirmation dialog, loading/empty/error/success states. |
-| Courses | `/dashboard/courses` | Search, category/status filters, create/edit with validation, draft ↔ published, detail drawer, optional thumbnail URL. |
-| Company chat | `/dashboard/chat` | Conversation list, search, message history, composer and send, timestamps, sender names, empty/loading/error states. Messages are mock and never delivered. |
-| Settings | `/dashboard/settings` | The signed-in account, the prototype's limits, and the steps needed for a real deployment. |
+Section anchors on the public site are `/#home`, `/#programs`, `/#vu-kids`, `/#vision-upgrade` (the software practice), `/#digital-marketing`, `/#about`, `/#why-us`, `/#contact`. Each `<section>` carries a matching `id` and `scroll-mt-24` so headings clear the fixed navbar.
 
-Every screen carries a demo-data notice. Activity feeds are **derived**, not logged: course activity is ordered by `updatedAt`, admin activity by `lastActiveAt ?? createdAt`. That keeps the prototype honest — there is no fabricated audit trail.
+---
 
-### 11.4 Architecture
+## 4. Tech stack
 
-The rule is the same as the public site's, applied to data instead of copy:
+| Concern      | Choice |
+| ------------ | ------ |
+| Framework    | Next.js **16.4.2** (App Router, Turbopack) |
+| UI runtime   | React **19.3** |
+| Styling      | Tailwind CSS **4** via `@tailwindcss/turbopack` |
+| Language     | TypeScript **5** (`strict`) |
+| Components   | **shadcn/ui** v4 registry on top of `radix-ui` (see [§15](#15-attribution)) |
+| Icons        | `lucide-react` in the dashboard; a local SVG set on the public site |
+| Validation   | **zod 4**, shared by every form and reusable on the server |
+| Toasts       | `sonner` |
+| Utilities    | `class-variance-authority`, `cn` (class merging), `tw-animate-css` |
+| Package mgr  | Bun (`bun.lock`) |
 
-> **Components never import demo data.** They receive it through a service contract.
+`next.config.ts` enables three things worth knowing:
 
-```
-src/
-├── app/
-│   ├── (auth)/login/page.tsx          # /login
-│   └── dashboard/
-│       ├── layout.tsx                 # mounts the shell + providers
-│       ├── page.tsx                   # overview
-│       ├── accounts/page.tsx
-│       ├── courses/page.tsx
-│       ├── chat/page.tsx
-│       └── settings/page.tsx
-│
-├── components/
-│   ├── auth/                          # session context, guard, sign-in form
-│   ├── dashboard/                     # shell: sidebar, header, search, notifications
-│   ├── admin/                         # accounts feature
-│   ├── courses/                       # courses feature
-│   ├── chat/                          # chat feature
-│   ├── settings/                      # settings feature
-│   └── ui/                            # shadcn/ui primitives (see ATTRIBUTION.md)
-│
-├── lib/
-│   ├── services/contracts.ts          # ← the backend seam (interfaces + request types)
-│   ├── services/index.ts              # DashboardServices aggregate
-│   ├── providers/service-context.tsx  # ← the single mock → HTTP swap point
-│   ├── providers/mock/                # demo adapters + in-memory store
-│   ├── validation/schemas.ts          # zod schemas shared by every form
-│   ├── labels.ts                      # role/status/category display labels
-│   └── format.ts                      # dates and relative time
-│
-└── types/dashboard.ts                 # domain models (transport agnostic)
-```
+- **`cacheComponents: true`** — static prerendering by default; request-time APIs need `Suspense`.
+- **`partialPrefetching: true`** — partial route prefetching (Next 16 instant navigation).
+- **`turbopack.rules`** — loads every `*.css` through the Tailwind Turbopack loader.
 
-Dependency direction, top to bottom:
+---
+
+## 5. Architecture
+
+Two data strategies, one rule each:
+
+> **Public site:** components never contain content. Copy and lists live in `src/data/mock/*.ts` and arrive as props.
+>
+> **Dashboard:** components never import demo data. Records arrive through service contracts in `src/lib/services/contracts.ts`.
 
 ```
-page → feature component → useServices() → ServiceContract → provider (mock | HTTP) → API
+                    ┌──────────────────────────────┐
+  Public pages ────► │ components/home, layout      │ ◄── src/data/mock/*.ts (content)
+                    └──────────────────────────────┘
+
+  Dashboard pages ─► │ components/<feature>         │
+                    │        │                     │
+                    │        ▼                     │
+                    │  useServices()               │
+                    │        │                     │
+                    │        ▼                     │
+                    │  Service contracts           │ ◄── types/dashboard.ts (models)
+                    │        │                     │
+                    │        ▼                     │
+                    │  Provider: mock | HTTP       │
+                    └──────────────────────────────┘
 ```
 
-No feature component imports `src/lib/providers/mock/*`, no provider imports a component, and `src/types/dashboard.ts` imports nothing.
+Dependency direction is strictly downwards:
 
-### 11.5 The service contract
+```
+page → feature component → useServices() → contract → provider → data source
+```
 
-`src/lib/services/contracts.ts` is the whole integration surface. A provider must implement these four interfaces; nothing else in the app needs to change.
+No feature component imports a provider, no provider imports a component, and `src/types/*` imports nothing.
+
+### Layer map
+
+| Layer | Location | May depend on |
+| ----- | -------- | ------------- |
+| Routes / pages | `src/app/**` | components, services types |
+| UI primitives | `src/components/ui/**` | nothing project-specific |
+| Public sections | `src/components/home/**`, `src/components/layout/**` | `types/types.ts` |
+| Dashboard features | `src/components/{admin,courses,chat,settings,dashboard,auth}/**` | `lib/services`, `lib/providers/service-context`, `types/dashboard.ts` |
+| Contracts | `src/lib/services/**` | `types/dashboard.ts` |
+| Providers | `src/lib/providers/**` | contracts, validation |
+| Validation | `src/lib/validation/**` | zod |
+| Domain models | `src/types/**` | nothing |
+
+### Where to make common changes
+
+| Task | Touch only |
+| ---- | ---------- |
+| Change public copy | the relevant file in `src/data/mock/` |
+| Add a nav link | `src/data/mock/navbar.ts` (desktop + mobile menus read the same array) |
+| Add a dashboard field to an account | `types/dashboard.ts` → mock seed → contract → form schema → table |
+| Add a new dashboard screen | a page in `src/app/dashboard/`, a feature folder in `src/components/`, a route entry in `DASHBOARD_PAGES` (`site-header.tsx`) and the sidebar |
+| Swap mock data for a real API | `src/lib/providers/service-context.tsx` (see [§10.6](#106-step-6--swap-the-provider)) |
+| Re-skin the app | `src/app/globals.css` tokens |
+
+---
+
+## 6. The public site
+
+### Sections
+
+`src/components/layout/HomeComponent.tsx` composes the landing page:
+
+| Component | File | Data source |
+| --------- | ---- | ----------- |
+| `Navbar` | `layout/Navbar.tsx` | `data/mock/navbar.ts` |
+| `Hero` | `home/Hero.tsx` | `data/mock/hero.ts` |
+| `ProgramsIntro` | `home/ProgramsIntro.tsx` | `data/mock/programs.ts` |
+| `VuKids` | `home/programs/VuKids.tsx` | `data/mock/programs.ts` |
+| `Software` | `home/programs/Software.tsx` | `data/mock/programs.ts` |
+| `DigitalMarketing` | `home/programs/DigitalMarketing.tsx` | `data/mock/programs.ts` |
+| `About` | `home/About.tsx` | `data/mock/about.ts` |
+| `WhyUs` | `home/WhyUs.tsx` | `data/mock/whyus.ts` |
+| `Contact` | `home/Contact.tsx` | `data/mock/contact.ts` |
+| `Footer` | `layout/Footer.tsx` | `data/mock/footer.ts` |
+
+Pages stay thin: they import a mock object, spread it into a component, and render. Everything is a server component except `Navbar` (mobile menu state) and `Contact` (form state).
+
+### Content contracts
+
+All public prop shapes live in `src/types/types.ts`. Highlights:
+
+- `BrandAssets` — the four logo files, from `src/data/brand.ts`. **The logo is never redrawn in CSS or text.**
+- `HeroProps`, `ProgramsIntroProps`, `ProgramProps`, `AboutProps`, `WhyUsProps` — section content.
+- `ContactProps` — details, notes and a generated form description:
+  ```ts
+  form: {
+    mode: 'demo' | 'api';   // 'demo' validates locally; 'api' posts to endpoint
+    endpoint?: string;
+    fields: FormFieldConfig[];
+    // labels for submit / success / error / retry states
+  }
+  ```
+- `FooterProps`, `NavbarProps`, `SectionHeadingProps` — chrome.
+
+`IconName` is a closed union rendered by `src/components/ui/Icon.tsx`. Adding an icon means adding the name to the union **and** its paths to the `paths` record.
+
+> `src/data/mock/courses.ts` and `src/components/layout/Sidebar.tsx` are empty placeholders. Nothing imports them.
+
+### The contact form
+
+Today `contact.ts` sets `mode: 'demo'`: the form validates, shows a success state, and plainly says nothing was transmitted. To connect it:
+
+1. Set `mode: 'api'` and `endpoint` in `src/data/mock/contact.ts`.
+2. Return `2xx` on success; the component handles network and server errors, a retry action and a reset action.
+
+Never send the form straight to a third party from the browser if the endpoint needs a secret — proxy it through a route handler.
+
+---
+
+## 7. The admin dashboard
+
+### Screens and behaviour
+
+| Screen | What works |
+| ------ | ---------- |
+| **Overview** (`/dashboard`) | Total administrator accounts with the active/disabled split, total courses with the draft/published split, recent course activity, recent admin activity, quick actions. All counts come from the service layer, not constants. |
+| **Admin accounts** (`/dashboard/accounts`) | Debounced search, role and status filters, sortable columns, pagination with page sizes, create, edit, enable/disable behind a confirmation dialog, loading/empty/error/success states, deep links (`?q=`, `?create=1`). |
+| **Courses** (`/dashboard/courses`) | Search, category and status filters, create/edit with validation, draft ↔ published, detail drawer, optional thumbnail URL. |
+| **Company chat** (`/dashboard/chat`) | Conversation list, search, message history, composer and send, timestamps, sender names, empty/loading/error states. Messages are mock and reach nobody. |
+| **Settings** (`/dashboard/settings`) | Signed-in account, prototype limitations, production notes. |
+
+### Shell
+
+`dashboard/layout.tsx` wraps every screen in `AppProviders` → `ServicesProvider` → `AuthProvider` → `DashboardShell`.
+
+The shell provides:
+
+- a navy sidebar with the real logo, grouped navigation, active states, and a collapsible mobile drawer;
+- a sticky header with breadcrumbs, a global search across courses and accounts, a notifications popover with an honest empty state, and the profile menu (account, workspace, sign out);
+- a skip link, a single visually hidden `<h1>` per page, and the demo-data notice.
+
+### Data flow on a screen
+
+`AccountsPage` is representative:
+
+1. Component state holds `{ search, role, status, page, pageSize, sortBy, sortDirection }`.
+2. An effect calls `administrators.list(query)` with a `reloadToken` that mutations bump.
+3. The service returns `ServiceResult<{ items, total, page, pageSize }>`.
+4. The component renders loading, error, empty or table states from that result — it never knows where the records came from.
+
+The same shape is used by an HTTP provider, so search, sorting and paging are already written for server-side implementations.
+
+### Activity feeds
+
+There is no fake audit log. Overview activity is **derived**:
+
+- course activity = courses ordered by `updatedAt`;
+- admin activity = accounts ordered by `lastActiveAt ?? createdAt`.
+
+That keeps the prototype honest and gives a backend an obvious place to introduce a real event stream later.
+
+### Chat limits
+
+Conversations and messages are fabricated demo data. Sending a message appends it to an in-memory array for the current page load. Nothing is delivered, queued or persisted. The UI says so in three places: the page notice, the conversation list footer, and the send confirmation.
+
+---
+
+## 8. Design system
+
+### Palette
+
+Defined once as Tailwind theme tokens in `src/app/globals.css`:
+
+| Token | Value | Use |
+| ----- | ----- | --- |
+| `--color-navy` | `#171447` | Headings, sidebar, dark surfaces |
+| `--color-navy-deep` | `#0b0926` | Deepest backgrounds |
+| `--color-brand` | `#FF7900` | Primary actions, active states, accents |
+| `--color-brand-deep` | `#F02B16` | Limited emphasis |
+| `--color-brand-ink` | `#C42A12` | Accessible orange text on light backgrounds |
+| `--color-brand-tint` | `#FFF3E8` | Soft orange fills |
+| `--color-surface` | `#F7F8FC` | Page background |
+| `--color-line` | `#E5E7F0` | Borders |
+| `--color-muted-foreground` | `#686B7A` | Secondary text |
+
+Text contrast drives two decisions:
+
+- The default button is orange **with navy text** — white on `#FF7900` is only 2.63:1, navy is 6.5:1.
+- `--destructive` is `#C42A12`, and `--ring` is navy so focus rings stay visible on the light surface.
+
+The brand token was renamed from `--color-muted` to `--color-muted-foreground` because shadcn already owns `muted`; that collision would have silently changed body text.
+
+### Type and motion
+
+`Lato` for both body and headings (declared in `@theme`). Motion is limited to short enter/exit transitions from `tw-animate-css` plus one reveal-on-scroll effect on the public site. No decorative dashboards, invented charts or ambient animation.
+
+### Accessibility
+
+- semantic landmarks (`header`, `nav`, `main`, `footer`), one `<h1>` per page;
+- visible focus rings (`:focus-visible`), keyboard-operable menus, dialogs and tables;
+- labelled inputs, `aria-invalid` + `aria-describedby` on form errors, `role="alert"` for form-level errors;
+- skip link to `#dashboard-content`, which is a focusable target;
+- dialogs trap focus and restore it on close (Radix);
+- status is never conveyed by colour alone — badges carry text.
+
+---
+
+## 9. Authentication and route protection
+
+### How it works today
+
+```
+LoginForm → AuthProvider.signIn() → AuthService.signIn() → mock adapter
+                                              │
+                                              ▼
+                                   session held in React state
+                                              │
+DashboardShell → AuthGuard ───────────────────┘
+```
+
+- `AuthProvider` (`src/components/auth/auth-provider.tsx`) owns `{ status, user, signIn, signOut }`.
+- On mount it calls `auth.getSession()`; until that resolves, `status` is `loading`.
+- `AuthGuard` (`src/components/auth/auth-guard.tsx`) shows a spinner while loading and redirects to `/login?next=<path>` when unauthenticated.
+- `LoginForm` validates with zod, shows a generic error for every credential failure, and redirects to `next` or `/dashboard`.
+- `signOut()` clears the session and returns the visitor to the sign-in screen.
+
+The comment at the top of `auth-guard.tsx` says it plainly: **this is a UX convenience, not a security control.**
+
+### Why there is no middleware (and why `AuthProvider` instead)
+
+Three reasons, in order of importance:
+
+1. **There is nothing for middleware to check.** The demo session lives in React state — not in a cookie, not in a header, not in a JWT. Middleware runs on the server *before* React exists, so it can only see the incoming request. With no cookie, a middleware check would see "no session" on every request and bounce `/dashboard` back to `/login` immediately after signing in. The demo could not work at all.
+2. **Middleware is an optimistic check even in production.** Next.js 16 renamed the file convention to **`proxy.ts`** and its own authentication guide describes Proxy as an *optional, optimistic* layer: read the cookie, redirect early, never hit the database. The real authorisation decision has to happen where the data is read — route handlers, server actions, the data-access layer — because a request can bypass the UI entirely.
+3. **Faking it would be worse than omitting it.** A `proxy.ts` that "protects" `/dashboard` by checking a cookie the browser can mint would look like security while providing none. That is exactly the kind of fake boundary this project avoids.
+
+What would change that: once sign-in is server-issued (see [§10.2](#102-step-2--make-the-session-server-side)), a `src/proxy.ts` becomes genuinely useful for redirecting early. It still would not replace per-request checks.
 
 ```ts
-export interface AuthService {
-  getSession(): Promise<SessionUser | null>;
-  signIn(request: SignInRequest): Promise<ServiceResult<SessionUser>>;
-  signOut(): Promise<void>;
+// src/proxy.ts — only meaningful once a real session cookie exists.
+import { NextResponse, type NextRequest } from 'next/server';
+
+const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME ?? 'vu_session';
+
+export function proxy(request: NextRequest) {
+  const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+  const isDashboard = request.nextUrl.pathname.startsWith('/dashboard');
+
+  if (isDashboard && !hasSession) {
+    const login = new URL('/login', request.url);
+    login.searchParams.set('next', request.nextUrl.pathname);
+    return NextResponse.redirect(login);
+  }
+
+  if (!isDashboard && hasSession && request.nextUrl.pathname === '/login') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  return NextResponse.next();
 }
 
-export interface AdministratorService {
-  list(query?: AdministratorListQuery): Promise<ServiceResult<AdministratorListResponse>>;
-  create(request: CreateAdministratorRequest): Promise<ServiceResult<AdministratorAccount>>;
-  update(id: string, request: UpdateAdministratorRequest): Promise<ServiceResult<AdministratorAccount>>;
-  setStatus(id: string, status: AccountStatus): Promise<ServiceResult<AdministratorAccount>>;
-}
-
-export interface CourseService {
-  list(query?: CourseListQuery): Promise<ServiceResult<CourseListResponse>>;
-  get(id: string): Promise<ServiceResult<Course>>;
-  create(request: CreateCourseRequest): Promise<ServiceResult<Course>>;
-  update(id: string, request: UpdateCourseRequest): Promise<ServiceResult<Course>>;
-}
-
-export interface ChatService {
-  listConversations(query?: ConversationListQuery): Promise<ServiceResult<ConversationListResponse>>;
-  listMessages(conversationId: string): Promise<ServiceResult<ChatMessage[]>>;
-  sendMessage(conversationId: string, body: string): Promise<ServiceResult<ChatMessage>>;
-}
-```
-
-Every call returns `ServiceResult<T>`:
-
-```ts
-type ServiceResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: ServiceError };
-
-type ServiceError = {
-  code: 'unauthorized' | 'forbidden' | 'not_found' | 'validation' | 'conflict' | 'network' | 'unknown';
-  message: string;                       // safe to render, never server internals
-  fieldErrors?: Record<string, string[]>; // per-field, keyed by form field name
+export const config = {
+  matcher: ['/dashboard/:path*', '/login'],
 };
 ```
 
-That shape is what lets the UI render loading, empty, error and field-level validation states without knowing whether the data came from memory or HTTP.
+> The cookie check above is presence only — the API must still validate the session on every request. Treat it as a redirect optimisation.
 
-### 11.6 Connecting a real backend
+`AuthProvider` would stay even with Proxy in place: the UI still needs to know who is signed in, and client navigations still need a loading state while the session resolves.
 
-The prototype is structured so this is additive. There is no fake API server to delete: replace the provider, delete the demo seed, done.
+---
 
-#### 11.6.1 Step 1 — environment variables
+## 10. Connecting a backend
 
-Server-only values, never prefixed with `NEXT_PUBLIC_`:
+The prototype is built so this is **additive**: replace providers, delete the seed data, done. There is no fake API server to remove.
+
+### 10.1 Step 1 — environment variables
 
 ```bash
-# .env.local  (never committed)
+# .env.local — never committed
 API_URL=https://api.visionupgrade.com
 SESSION_COOKIE_NAME=vu_session
 ```
 
-`API_URL` is read only in server code (route handlers / server actions). The browser must never receive a token or a database URL.
+Rules:
 
-#### 11.6.2 Step 2 — make the session server-side
+- server-only values are **never** prefixed `NEXT_PUBLIC_`;
+- the browser never receives an API key, a database URL or a session signing key;
+- `.env*` stays in `.gitignore`.
 
-Today `AuthService` lives entirely in the browser. In production the browser should only ever hold an opaque, `HttpOnly` cookie. Two viable layouts:
+### 10.2 Step 2 — make the session server-side
 
-- **BFF (recommended here):** keep Next.js route handlers under `src/app/api/*`; they talk to your API with a secret and set the cookie. The browser only sees same-origin URLs.
-- **Direct API:** the dashboard calls your API directly and the API sets the cookie (`SameSite=None; Secure`, CORS with credentials).
+Two workable layouts:
 
-Either way the login endpoint must:
+- **BFF (recommended):** Next.js route handlers under `src/app/api/*` talk to your API with a server-held secret and set the cookie. The browser only ever calls same-origin paths.
+- **Direct API:** the dashboard calls the API directly and the API sets the cookie (`Secure`, `SameSite=None` if cross-site, CORS with credentials).
+
+The sign-in endpoint must:
 
 1. accept credentials over HTTPS only;
-2. look the account up by username, and run a constant-time comparison against a **server-side hash** (Argon2id, scrypt or bcrypt — never SHA-256 alone);
+2. look the account up by username and compare against a **server-side hash** (Argon2id, scrypt or bcrypt — never plain SHA-256);
 3. return the **same generic error** for unknown username, wrong password and disabled account;
-4. rate-limit by IP and by username, with a lockout or backoff;
-5. create an opaque session id, store it server-side, and set the cookie:
+4. rate-limit by IP *and* by username, with backoff or lockout;
+5. create an opaque session id, store it server-side, and set the cookie.
 
 ```ts
 // src/app/api/session/route.ts  (BFF example)
@@ -684,9 +435,7 @@ const bodySchema = z.object({ username: z.string().min(3), password: z.string().
 
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json());
-  if (!parsed.success) {
-    return Response.json({ error: 'Invalid request' }, { status: 400 });
-  }
+  if (!parsed.success) return Response.json({ error: 'Invalid request' }, { status: 400 });
 
   const upstream = await fetch(`${process.env.API_URL}/sessions`, {
     method: 'POST',
@@ -696,11 +445,8 @@ export async function POST(request: Request) {
   });
 
   if (!upstream.ok) {
-    // Same message for every credential failure — never leak which part was wrong.
-    return Response.json(
-      { error: 'We could not sign you in with those details.' },
-      { status: 401 },
-    );
+    // Identical message for every credential failure.
+    return Response.json({ error: 'We could not sign you in with those details.' }, { status: 401 });
   }
 
   const { sessionId, user } = await upstream.json();
@@ -724,7 +470,7 @@ export async function DELETE() {
 }
 ```
 
-Then the HTTP `AuthService` becomes three `fetch` calls with `credentials: 'include'`, and `getSession()` maps a `401` to `null`:
+The HTTP `AuthService` is then three fetches. `getSession()` maps `401` to `null`, which is exactly what `AuthProvider` already expects:
 
 ```ts
 // src/lib/providers/http/http-auth.service.ts
@@ -766,11 +512,11 @@ export function createHttpAuthService(): AuthService {
 }
 ```
 
-> `getSession()` is already what `AuthGuard` waits on, so replacing this one file is enough to make every protected page check the server on load.
+Because `AuthProvider` already calls `getSession()` on mount, this one file turns every protected page into a real session check. Adding `src/proxy.ts` ([§9](#9-authentication-and-route-protection)) on top removes the flash of the guard spinner on cold loads.
 
-#### 11.6.3 Step 3 — administrator accounts
+### 10.3 Step 3 — administrator accounts
 
-Endpoints the service expects (BFF paths shown; map them to whatever your API exposes):
+Endpoints the service expects (BFF paths shown; map them to your API):
 
 | Method | Path | Body / query | Returns |
 | ------ | ---- | ------------ | ------- |
@@ -779,21 +525,24 @@ Endpoints the service expects (BFF paths shown; map them to whatever your API ex
 | `PATCH` | `/api/administrators/:id` | `{ name, username, role }` | the updated account |
 | `PATCH` | `/api/administrators/:id/status` | `{ status: 'active' \| 'disabled' }` | the updated account |
 
-Server rules that the UI cannot enforce:
+References: `AdministratorListQuery`, `CreateAdministratorRequest`, `UpdateAdministratorRequest` in `src/lib/services/contracts.ts`.
 
-- **Authorisation.** Only `owner` may create accounts or change roles; only `owner`/`administrator` may enable or disable; nobody may disable the last active owner, and nobody may escalate their own role.
-- **No passwords in create/update.** Provision a credential with an invitation email or a server-generated single-use token. The dashboard deliberately has no password field.
-- **Uniqueness.** `username` is the login identifier — enforce a case-insensitive unique index and map a conflict to `409` → `ServiceError.code = 'conflict'`.
-- **Pagination and sorting happen server-side.** The table is written for it; `total` must be the count *after* filters, not the page length.
-- **Audit log.** Record actor, action, target and timestamp server-side. Do not trust a client-supplied actor id.
+Server rules the UI cannot enforce:
 
-An HTTP implementation follows the shape shown in §11.6.2:
+- **Authorisation.** Only `owner` may create accounts or change roles; only `owner`/`administrator` may enable or disable. Nobody may disable the last active owner, and nobody may escalate their own role.
+- **No passwords in create/update.** `CreateAdministratorRequest` has no password field on purpose. Provision credentials with an invitation email or a server-generated single-use token.
+- **Uniqueness.** `username` is the login identifier — enforce a case-insensitive unique index and map violations to `409` → `ServiceError.code = 'conflict'`.
+- **Server-side paging and sorting.** The table is built for it. `total` must be the count *after* filters, not the page length.
+- **Audit log.** Record actor, action, target and timestamp server-side. Never trust a client-supplied actor id.
 
 ```ts
 // src/lib/providers/http/http-administrators.service.ts
+import type { AdministratorService } from '@/lib/services/contracts';
+import { serviceFail, serviceOk } from '@/lib/services/contracts';
+
 const json = { 'content-type': 'application/json' };
 
-async function parse<T>(response: Response): Promise<ServiceResult<T>> {
+async function parse<T>(response: Response) {
   if (response.ok) return serviceOk((await response.json()) as T);
 
   const body = await response.json().catch(() => ({}));
@@ -815,22 +564,33 @@ export function createHttpAdministratorService(): AdministratorService {
       for (const [key, value] of Object.entries(query)) {
         if (value !== undefined && value !== 'all') params.set(key, String(value));
       }
-      return parse(await fetch(`/api/administrators?${params}`, { credentials: 'include', cache: 'no-store' }));
+      return parse(await fetch(`/api/administrators?${params}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      }));
     },
     async create(request) {
-      return parse(await fetch('/api/administrators', { method: 'POST', headers: json, credentials: 'include', body: JSON.stringify(request) }));
+      return parse(await fetch('/api/administrators', {
+        method: 'POST', headers: json, credentials: 'include', body: JSON.stringify(request),
+      }));
     },
     async update(id, request) {
-      return parse(await fetch(`/api/administrators/${id}`, { method: 'PATCH', headers: json, credentials: 'include', body: JSON.stringify(request) }));
+      return parse(await fetch(`/api/administrators/${id}`, {
+        method: 'PATCH', headers: json, credentials: 'include', body: JSON.stringify(request),
+      }));
     },
     async setStatus(id, status) {
-      return parse(await fetch(`/api/administrators/${id}/status`, { method: 'PATCH', headers: json, credentials: 'include', body: JSON.stringify({ status }) }));
+      return parse(await fetch(`/api/administrators/${id}/status`, {
+        method: 'PATCH', headers: json, credentials: 'include', body: JSON.stringify({ status }),
+      }));
     },
   };
 }
 ```
 
-#### 11.6.4 Step 4 — courses
+`parse` normalises HTTP status into the `ServiceErrorCode` union, so dialogs can show field errors and toasts without any change.
+
+### 10.4 Step 4 — courses
 
 | Method | Path | Body / query | Returns |
 | ------ | ---- | ------------ | ------- |
@@ -841,15 +601,28 @@ export function createHttpAdministratorService(): AdministratorService {
 
 Server rules:
 
-- **Validate with the same zod schema** (`src/lib/validation/schemas.ts`) before writing. Client validation is feedback, not a guarantee.
-- **Set `publishedAt` server-side** when `status` flips to `published`, and clear it on unpublish. Never accept it from the client.
-- **Own `createdAt` / `updatedAt`** on the server; the activity feeds order by `updatedAt`, so a client-supplied clock breaks them.
-- **Thumbnails** are URLs today. If uploads are added, use a signed upload endpoint and store an object key, then expand `thumbnailUrl` to a full URL when serialising.
-- **Publishing is a privileged action** — check the session role on the server, not in the UI.
+- **Validate with the same schema.** Import `courseSchema` from `src/lib/validation/schemas.ts`; client validation is feedback, not a guarantee.
+- **Own `publishedAt`.** Set it when status flips to `published`, clear it on unpublish, and never accept it from the client.
+- **Own `createdAt` / `updatedAt`.** The activity feeds order by `updatedAt`; a client clock breaks them.
+- **Authorise publishing.** Check the session role server-side; the UI hiding a button is not permission.
+- **Category is an enum**, not free text: `vu-kids | software | digital-marketing`.
+- **Thumbnails are URLs today.** For uploads, use a signed upload endpoint, store an object key, and expand to a URL when serialising. Validate the URL and restrict hosts before rendering optimised images.
 
-Implementation mirrors the accounts service (same `parse` helper), so the file is roughly thirty lines.
+Implementation mirrors the accounts service — same `parse` helper, roughly thirty lines.
 
-#### 11.6.5 Step 5 — swap the provider
+### 10.5 Step 5 — company chat (optional)
+
+`ChatService` has three methods: `listConversations`, `listMessages`, `sendMessage`. For a real build:
+
+- back conversations with tables (conversations, participants, messages);
+- page message history instead of returning everything;
+- authorise membership on every call — a conversation id is not permission;
+- push new messages over WebSocket/SSE, or poll while the tab is visible;
+- store the sender server-side from the session, never from the request body.
+
+Until then, keep the mock provider and the "not connected to anyone" notices.
+
+### 10.6 Step 6 — swap the provider
 
 One file changes:
 
@@ -863,49 +636,242 @@ export function ServicesProvider({ children }: ServicesProviderProps) {
 }
 ```
 
-Because every screen calls `useServices()`, no feature component, dialog or table needs to change. Then delete `src/lib/providers/mock/` and the demo notice, and remove the username hints from the sign-in screen.
+`createHttpServices()` returns the same `DashboardServices` object:
 
-#### 11.6.6 Step 6 — re-check authorisation everywhere
+```ts
+export function createHttpServices(): DashboardServices {
+  return {
+    auth: createHttpAuthService(),
+    administrators: createHttpAdministratorService(),
+    courses: createHttpCourseService(),
+    chat: createHttpChatService(),
+  };
+}
+```
 
-The client guard in `src/components/auth/auth-guard.tsx` is a **navigation convenience**, not a security boundary. A request can always be replayed outside the browser. Every endpoint must:
+Then delete `src/lib/providers/mock/`, the demo notice, and the username hints in `demo-data.ts`/`LoginForm`.
 
-- resolve the session from the `HttpOnly` cookie itself;
-- return `401` for a missing/expired session and `403` for an insufficient role;
-- re-read the account's role and status on each request, so disabling an account takes effect immediately;
-- never accept a user id, role or actor name from the request body.
+### 10.7 Step 7 — go-live checklist
 
-If you add server-rendered dashboard pages later, check the session in the layout too (`cookies()` plus your API), so a stale tab cannot render data it no longer has access to.
-
-#### 11.6.7 Go-live checklist
-
-- [ ] Real `AuthService` backed by a server session cookie (`HttpOnly`, `Secure`, `SameSite`)
-- [ ] Passwords hashed with Argon2id/bcrypt; credentials never logged
+- [ ] Server-issued session in an `HttpOnly; Secure; SameSite` cookie
+- [ ] Argon2id/bcrypt hashing; credentials never logged
 - [ ] Rate limiting and lockout on sign-in
-- [ ] `AdministratorService` + `CourseService` HTTP providers, server-side validation and authorisation
-- [ ] Invitation flow for new administrators (no password typed into the dashboard)
-- [ ] Audit logging for account and publishing changes
+- [ ] `AdministratorService` and `CourseService` HTTP providers deployed
+- [ ] Server-side validation (zod) and role checks on every mutation
+- [ ] Invitation flow for new administrators — no password typed into the dashboard
+- [ ] Audit logging for account, role and publishing changes
 - [ ] Demo seed data, demo usernames and demo notices removed
-- [ ] HTTPS enforced, security headers set, `NEXT_PUBLIC_*` free of secrets
+- [ ] HTTPS enforced, security headers, no secrets in `NEXT_PUBLIC_*`
+- [ ] `src/proxy.ts` redirect added (optional but recommended)
 - [ ] Error tracking and uptime monitoring
 
-### 11.7 Security limits of the prototype
+---
 
-Be explicit with stakeholders:
+## 11. Security posture
 
-- **No credential verification.** Any 8+ character password works with an existing, active username. This is not authentication.
-- **Sessions do not survive a reload.** The session lives in React state; there is no cookie to steal — and no cookie to trust.
-- **The guard is client-side.** `AuthGuard` redirects the UI; it protects no data. Nothing here should be exposed to the public internet with real data behind it.
-- **No persistence.** Accounts, courses and chat messages live in an in-memory store that resets on reload.
-- **No authorisation model.** Every signed-in demo user sees the same screens; role labels are display-only. A real build must enforce permissions on the server *and* hide unavailable actions in the UI.
-- **Chat is fiction.** The conversations are labelled demo data, messages are stored in memory, and sending one reaches nobody.
-- **No password storage anywhere.** There is no password field in the account model (`CreateAdministratorRequest` has none), no password in the seed data, and no password in browser storage.
+### What is true today
 
-`ATTRIBUTION.md` records the licences of the UI components and libraries used by the shell.
+| Area | Reality |
+| ---- | ------- |
+| Credentials | None stored, hashed, compared or transmitted. Any 8+ character password works with an active demo username. |
+| Session | React state only. Reload signs you out. No cookie, no token, no `localStorage` flag. |
+| Route protection | `AuthGuard` redirects the UI. It protects no data. |
+| Authorisation | None. Every signed-in demo user sees every screen; role labels are display-only. |
+| Persistence | In-memory store, reset on reload. |
+| Chat | Fabricated conversations, in-memory messages, delivered to nobody. |
+| Transport | Local development over HTTP; no API exists yet. |
+| Secrets | None in the repo, none in `NEXT_PUBLIC_*`. |
+
+### What must never regress
+
+- **No passwords in source, mock data, browser storage or public env vars.** Not even fake ones — a fake password implies a real check.
+- **No client-side privilege.** The UI may hide actions by role, but the server decides.
+- **No secrets in the client bundle.** Anything in `NEXT_PUBLIC_*` is public by definition.
+- **No real credentials in Git.** `.env*` stays ignored; use a secret manager in deployment.
+- **No "security" that a user can toggle.** A hidden route or a `localStorage` flag is not a boundary.
+
+### Threat notes for the real build
+
+- **CSRF:** cookie-auth mutations need `SameSite=Lax` (or `Strict`), plus an origin check or CSRF token on non-GET requests.
+- **Session fixation:** rotate the session id on sign-in and on privilege change.
+- **Enumeration:** identical error text and timing for unknown users and wrong passwords.
+- **XSS:** never inject message or course content with `dangerouslySetInnerHTML`; render as text.
+- **Open redirects:** `?next=` is already restricted to same-origin paths in `nextPathAfterSignIn()`.
+- **Thumbnail URLs:** `next/image` renders them `unoptimized`, which bypasses the remote-host allowlist. Add host validation before switching to optimised images.
+
+---
+
+## 12. Conventions and gotchas
+
+**React keys must be unique per list.** Every mock list item carries an `id` used as the key. Duplicates produce "two children with the same key" warnings and can drop items.
+
+**Never build Tailwind class names dynamically.** `bg-${color}-600` will not be generated. Store complete class strings (`'bg-navy'`) in data, or map semantic names to fixed classes in the component.
+
+**Tailwind v4 emits `oklch()` / `lab()`.** Anything that parses colours at runtime (contrast checks, canvas) must handle those formats.
+
+**`cacheComponents: true` is on.** Request-time data in a server component needs a `Suspense` boundary or the build fails. Prefer static data.
+
+**Dashboard pages declare `export const instant = false`.** The client-side `AuthGuard` replaces the page tree while the session resolves, so Next.js 16 cannot validate instant navigation for that segment. The export is the documented opt-out. Remove it only when the guard moves server-side.
+
+**`react-hooks/set-state-in-effect` is disabled for `src/components/**` only.** Data-fetching effects legitimately set state after a promise resolves. The rule stays on for `src/lib`, `src/hooks` and the public site.
+
+**`scroll-behavior: smooth` is global.** The root `<html>` carries `data-scroll-behavior="smooth"` so Next.js can suppress smooth scrolling during route transitions (it warns without it).
+
+**Use `data-scroll-behavior` rather than removing smooth scrolling.** Anchor links on the public site depend on it.
+
+**`next/image` with `unoptimized` skips the remote-host allowlist.** That is what makes arbitrary course thumbnails render safely today — do not enable optimisation without a host allowlist.
+
+**The demo clock is module-level.** `demo-data.ts` computes timestamps relative to first evaluation, so "3 hours ago" stays believable while the page is open.
+
+**PowerShell can corrupt UTF-8.** Do not round-trip files through `Get-Content -Raw` + `WriteAllText`; it mangles em dashes. Use the editor or a UTF-8 aware tool.
+
+**`package.json` contains a self-dependency** (`"vision-upgrade": "."`). It is harmless but should be removed in a dependency cleanup, together with a fresh `bun install`.
+
+---
+
+## 13. Verification
+
+Run before shipping a change:
+
+```bash
+node node_modules/typescript/bin/tsc --noEmit
+bun run lint
+bun run build
+```
+
+The production build prerenders every route:
+
+```
+○ /                    ○ /dashboard           ○ /dashboard/chat
+○ /_not-found          ○ /dashboard/accounts  ○ /dashboard/courses
+○ /contact             ○ /employees           ○ /dashboard/settings
+○ /login
+```
+
+### Manual smoke test
+
+1. `/` — all sections render, anchors scroll, no console errors.
+2. `/contact` — form validates, demo notice is visible, no request is sent.
+3. `/dashboard` while signed out → redirects to `/login?next=%2Fdashboard`.
+4. Sign in with `demo.owner` and any 8+ character password.
+5. Accounts: create a record, edit it, disable it behind the confirmation dialog, search, filter, sort, page.
+6. Courses: create a course, publish it, open the drawer, move it back to draft, edit it.
+7. Chat: send a message, confirm it appears and the composer clears.
+8. Global search: open it from the header, search an account, jump to it.
+9. Profile menu → sign out → back at `/login`.
+10. Reload the dashboard while signed in → signed out, as documented.
+
+### What has been checked in this build
+
+- TypeScript, ESLint and `next build` are clean.
+- All routes above were exercised in a browser with no console errors (beyond transient HMR socket noise caused by running a build next to a dev server).
+- Create/edit/enable-disable, publish/unpublish, chat send, search, deep links and sign-out were verified against the mock providers.
+
+---
+
+## 14. Project structure
+
+```
+.
+├── public/
+│   ├── logo-full.png  logo-mark.png
+│   ├── logo-wordmark.png  logo-wordmark-light.png
+│   └── vision-upgrade-logo.jpg        # original supplied artwork
+├── scripts/
+│   └── generate-logo-assets.mjs       # derives the PNGs above from the original
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx                 # fonts, metadata, <html data-scroll-behavior>
+│   │   ├── globals.css                # Tailwind + brand tokens + shadcn layer
+│   │   ├── page.tsx                   # "/"
+│   │   ├── contact/page.tsx           # "/contact"
+│   │   ├── (auth)/
+│   │   │   ├── layout.tsx             # branded sign-in shell
+│   │   │   └── login/page.tsx         # "/login"
+│   │   ├── dashboard/
+│   │   │   ├── layout.tsx             # providers + shell
+│   │   │   ├── page.tsx               # overview
+│   │   │   ├── accounts/page.tsx
+│   │   │   ├── courses/page.tsx
+│   │   │   ├── chat/page.tsx
+│   │   │   └── settings/page.tsx
+│   │   └── employees/page.tsx         # placeholder
+│   ├── components/
+│   │   ├── ui/                        # shadcn primitives + public-site primitives
+│   │   ├── home/                      # landing sections (props-driven)
+│   │   ├── layout/                    # navbar, footer, HomeComponent
+│   │   ├── auth/                      # providers, guard, login form
+│   │   ├── dashboard/                 # shell, sidebar, header, widgets
+│   │   ├── admin/                     # accounts feature
+│   │   ├── courses/                   # courses feature
+│   │   ├── chat/                      # chat feature
+│   │   └── settings/                  # settings feature
+│   ├── data/
+│   │   ├── brand.ts                   # the four logo paths
+│   │   └── mock/                      # ALL public-site content
+│   ├── hooks/use-mobile.ts
+│   ├── lib/
+│   │   ├── services/                  # contracts + DashboardServices
+│   │   ├── providers/
+│   │   │   ├── service-context.tsx    # provider injection point
+│   │   │   └── mock/                  # demo adapters + in-memory store
+│   │   ├── validation/schemas.ts      # zod schemas
+│   │   ├── labels.ts  format.ts  utils.ts
+│   └── types/
+│       ├── types.ts                   # public-site prop shapes
+│       └── dashboard.ts               # dashboard domain models
+├── ATTRIBUTION.md                     # shadcn licence + dependency licences
+├── components.json                    # shadcn CLI config
+├── eslint.config.mjs
+└── next.config.ts
+```
+
+---
+
+## 15. Attribution
+
+The dashboard's UI primitives and shell are adapted from **shadcn/ui** (MIT) — CLI `shadcn@4.22.1`, style `radix-nova`, blocks `sidebar-01`, `dashboard-01` and `login-01`. They were re-skinned with the Vision Upgrade palette and wired to this project's service layer.
+
+The MIT licence text and the licences of every runtime dependency added for the dashboard are recorded in [`ATTRIBUTION.md`](./ATTRIBUTION.md).
+
+The public site's logo is supplied artwork, processed by `scripts/generate-logo-assets.mjs`. It is rendered as an image everywhere; it is never reconstructed with CSS or text.
+
+---
+
+## 16. Status
+
+**Working**
+
+- Responsive public site with hero, programs (VU Kids, software, digital marketing), about, why-us, contact and footer
+- `/contact` sharing the same sections
+- Dashboard: sign-in, overview, accounts, courses, chat, settings
+- Service-layer architecture ready for an HTTP provider
+- Typecheck, lint and production build clean
+- Keyboard navigation, focus states, labelled forms, one `<h1>` per page
+
+**Not built yet**
+
+- No backend, no API calls, no environment variables
+- Contact form is not connected to anything
+- Dashboard runs on in-memory demo data; sessions do not survive reload
+- `/employees` is placeholder markup
+- `src/components/layout/Sidebar.tsx` and `src/data/mock/courses.ts` are unused placeholders
+- No test suite, no CI, no error monitoring
+- No analytics, cookie consent or sitemap
+- No public-site image pipeline beyond the logo and hero
+
+**Next**
+
+1. Stand up the session endpoint and swap `AuthProvider` onto the HTTP auth service.
+2. Implement the administrators and courses endpoints from [§10](#10-connecting-a-backend), keeping the contract types unchanged.
+3. Add `src/proxy.ts` for fast redirects once the cookie exists.
+4. Delete the demo providers, seed data and demo notices.
+5. Add integration tests around the provider layer, then E2E tests for sign-in and the two CRUD flows.
 
 ---
 
 <div align="center">
 
-Built with [Next.js](https://nextjs.org) · TypeScript · Tailwind CSS
+**Vision Upgrade** · Next.js · TypeScript · Tailwind CSS
 
 </div>

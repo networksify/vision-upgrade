@@ -1,10 +1,12 @@
 # Vision Upgrade
 
-Marketing site for **Vision Upgrade** — an AI machine-vision platform that turns live camera feeds into decisions (detection, quality inspection, workflow automation).
+Marketing site for **Vision Upgrade (VUSoft)** — three connected practices: VU Kids learning programs, our own software and technology work, and digital marketing.
 
 The site is currently **front-end only**. All content is served from local mock files so that copy, sections and lists can be changed without touching a single component.
 
-> **Audience:** this document is written for a backend developer joining the project. Section [3. Mock data system](#3-mock-data-system) is the important part — it explains where content lives, the exact data shapes the API will need to return, and how to swap the mocks for real endpoints.
+The same app also ships the internal **admin dashboard** at `/dashboard`. It is documented separately in [§11](#11-admin-dashboard), which includes the demo sign-in details and the steps for connecting a real backend for administrator accounts and courses.
+
+> **Audience:** this document is written for a backend developer joining the project. Section [3. Mock data system](#3-mock-data-system) explains how the public site's content layer works, and [§11.6](#116-connecting-a-real-backend) explains how to swap the dashboard's mock services for real endpoints.
 
 ---
 
@@ -20,6 +22,7 @@ The site is currently **front-end only**. All content is served from local mock 
 8. [Replacing mocks with a real API](#8-replacing-mocks-with-a-real-api)
 9. [Conventions and gotchas](#9-conventions-and-gotchas)
 10. [Current status](#10-current-status)
+11. [Admin dashboard](#11-admin-dashboard)
 
 ---
 
@@ -29,8 +32,11 @@ The site is currently **front-end only**. All content is served from local mock 
 | ------------ | --------------------------------------------------- |
 | Framework    | Next.js 16.4.2 (App Router, Turbopack)              |
 | UI           | React 19.3, Tailwind CSS 4 (`@tailwindcss/turbopack`)|
+| Components   | shadcn/ui (Radix primitives) for the dashboard — see `ATTRIBUTION.md` |
 | Language     | TypeScript 5 (`strict: true`)                        |
 | Fonts        | Lato (via `globals.css`), Geist (via `next/font`)    |
+| Validation   | zod 4 (forms + shareable with the backend)           |
+| Icons        | lucide-react (dashboard), local SVG set (public site)|
 | Package mgr  | Bun (`bun.lock`)                                     |
 
 `next.config.ts` enables two Next.js 16 features that affect how you write code here:
@@ -151,29 +157,42 @@ Adding, removing or reordering fields requires no component change. `fullWidth: 
 ```
 src/
 ├── app/                              # Next.js App Router — routing only
-│   ├── layout.tsx                    # Root layout: fonts, <body> wrapper, metadata
+│   ├── layout.tsx                    # Root layout: fonts, metadata, scroll behaviour
 │   ├── page.tsx                      # "/" landing page — composes the sections
-│   ├── globals.css                   # Tailwind import, @theme tokens, smooth scroll
+│   ├── globals.css                   # Tailwind import, @theme tokens, shadcn tokens
 │   ├── contact/page.tsx              # "/contact" — dedicated contact page
-│   ├── (auth)/login/page.tsx         # "/login" — stub
-│   ├── dashboard/page.tsx            # "/dashboard" — stub
-│   ├── dashboard/_layout.tsx         # empty placeholder
+│   ├── (auth)/login/page.tsx         # "/login" — dashboard sign-in
+│   ├── dashboard/                    # admin dashboard (see §11.4)
+│   │   ├── layout.tsx                # shell: sidebar, header, providers, auth guard
+│   │   ├── page.tsx                  # overview
+│   │   ├── accounts/page.tsx
+│   │   ├── courses/page.tsx
+│   │   ├── chat/page.tsx
+│   │   └── settings/page.tsx
 │   └── employees/page.tsx            # "/employees" — stub
 │
 ├── components/
-│   ├── ui/                           # Generic, reusable primitives (no business content)
+│   ├── ui/                           # Public-site primitives (Icon, ButtonLink, …)
 │   │   ├── Icon.tsx                  # SVG icon set, keyed by IconName
 │   │   ├── ButtonLink.tsx            # CTA link, variants: primary | secondary | plain
 │   │   ├── ArrowLink.tsx             # "text + arrow" inline link
 │   │   ├── SectionHeading.tsx        # eyebrow + h2 + description
 │   │   ├── FormField.tsx             # Renders one field from a FormField object
-│   │   └── HeroPreview.tsx           # The mock "live feed" card in the hero
+│   │   ├── HeroPreview.tsx           # The mock "live feed" card in the hero
+│   │   └── …                         # shadcn/ui components (button, dialog, table, …)
 │   │
 │   ├── home/                         # Landing page sections — all props-driven
 │   │   ├── Home.tsx                  # hero            ← HeroProps
 │   │   ├── About.tsx                 # about           ← AboutProps
 │   │   ├── Services.tsx              # services grid   ← ServicesProps
 │   │   └── Contact.tsx               # contact + form  ← ContactProps  ('use client')
+│   │
+│   ├── auth/                         # session provider, route guard, sign-in form
+│   ├── dashboard/                    # sidebar, header, overview widgets
+│   ├── admin/                        # admin accounts feature
+│   ├── courses/                      # courses feature
+│   ├── chat/                         # company chat feature
+│   ├── settings/                     # settings feature
 │   │
 │   └── layout/
 │       ├── Navbar.tsx                # responsive nav  ← NavbarProps  ('use client')
@@ -182,13 +201,21 @@ src/
 │       └── Sidebar.tsx               # empty placeholder
 │
 ├── data/
-│   └── mock/                         # ← ALL CONTENT LIVES HERE
+│   └── mock/                         # ← ALL PUBLIC-SITE CONTENT LIVES HERE
 │       ├── navbar.ts  hero.ts  about.ts
 │       ├── services.ts  contact.ts  footer.ts
 │       └── courses.ts                # empty placeholder
 │
+├── lib/                              # dashboard data layer (see §11.4)
+│   ├── services/                     # contracts + DashboardServices type
+│   ├── providers/                    # mock providers + ServicesProvider
+│   ├── validation/                   # zod schemas
+│   ├── labels.ts  format.ts
+│   └── utils.ts                      # cn()
+│
 └── types/
-    └── types.ts                      # Every prop shape in the project
+    ├── types.ts                      # Public-site prop shapes
+    └── dashboard.ts                  # Dashboard domain models
 ```
 
 **Directory intent**
@@ -199,8 +226,11 @@ src/
 | `components/ui/`  | Zero project-specific knowledge. Reusable anywhere.                     |
 | `components/home/`| Landing page sections. Know their props shape, not the copy.           |
 | `components/layout/`| Chrome shared across pages (navbar, footer).                           |
-| `data/mock/`      | The content layer. The only files a copywriter or backend touches.     |
-| `types/`          | The contract between `data/mock/` and `components/`.                   |
+| `components/<feature>/` | Dashboard screens. Read data through `useServices()` only.        |
+| `data/mock/`      | The public-site content layer. The only files a copywriter touches.    |
+| `lib/services/`   | Contracts. The only files a backend integration rewrites against.      |
+| `lib/providers/`  | Provider implementations. The only files that know where data lives.   |
+| `types/`          | Shared shapes. No imports, no runtime code.                            |
 
 ---
 
@@ -354,13 +384,17 @@ These are the exact shapes the API must return. They are the TypeScript types in
 
 ## 7. Routes
 
-| Route        | Page             | Status                                                       |
-| ------------ | ---------------- | ------------------------------------------------------------ |
-| `/`          | `app/page.tsx`   | Landing page: navbar → hero → about → services → contact → footer. Static. |
-| `/contact`   | `app/contact/page.tsx` | Navbar → contact section → footer. Static. Shares `ContactSection` and `FooterSection` with `/`. |
-| `/login`     | `app/(auth)/login/page.tsx` | Stub — placeholder markup only.                 |
-| `/dashboard` | `app/dashboard/page.tsx` | Stub — placeholder markup only.                     |
-| `/employees` | `app/employees/page.tsx` | Stub — placeholder markup only.                     |
+| Route          | Page                        | Status                                                       |
+| -------------- | --------------------------- | ------------------------------------------------------------ |
+| `/`            | `app/page.tsx`              | Landing page: navbar → hero → about → services → contact → footer. Static. |
+| `/contact`     | `app/contact/page.tsx`      | Navbar → contact section → footer. Static. Shares `ContactSection` and `FooterSection` with `/`. |
+| `/login`       | `app/(auth)/login/page.tsx` | Dashboard sign-in. Redirects to `?next=` (or `/dashboard`) when already signed in. |
+| `/dashboard`   | `app/dashboard/page.tsx`    | Overview — stat cards, recent course/admin activity, quick actions. |
+| `/dashboard/accounts` | `app/dashboard/accounts/page.tsx` | Administrator accounts: search, filter, sort, page, create, edit, enable/disable. |
+| `/dashboard/courses`  | `app/dashboard/courses/page.tsx`  | Course catalogue: search, filter, create, edit, publish/unpublish, detail drawer. |
+| `/dashboard/chat`     | `app/dashboard/chat/page.tsx`     | Company chat — mock conversations only. |
+| `/dashboard/settings` | `app/dashboard/settings/page.tsx` | Signed-in account details and prototype/backend notes. |
+| `/employees`   | `app/employees/page.tsx`    | Stub — placeholder markup only.                              |
 
 Section anchors are `/#home`, `/#about`, `/#services`, `/#contact` — each `<section>` carries the matching `id` and a `scroll-mt-24` (96px) offset so the target is not hidden under the header.
 
@@ -434,11 +468,15 @@ Notes for the backend:
 
 **`cacheComponents: true` is on.** Request-time data (`cookies()`, `headers()`, `Date.now()`, uncached `fetch`) inside a server component requires a `Suspense` boundary, or the build fails. Prefer static data or `next: { revalidate: n }`.
 
+**Dashboard pages set `export const instant = false`.** Each `/dashboard` page is wrapped in a client-side `AuthGuard` that renders the session-check screen instead of its children during prerendering. Next.js 16 can't validate instant navigation for a segment that isn't rendered, so the page opts out explicitly. Remove the export only if the guard moves server-side.
+
+**`react-hooks/set-state-in-effect` is disabled for `src/components/**`.** Feature screens load data in an effect and set state when it resolves; the rule is kept on for `src/lib`, `src/hooks` and the public site, where it still catches accidental cascading renders.
+
 **The copyright year is hard-coded** (`'2026 Vision Upgrade. All rights reserved.'` in `footer.ts`) rather than computed, to keep the page fully static.
 
-**`scroll-behavior: smooth` is set globally** in `globals.css` (`* { scroll-behavior: smooth }`). Anchor navigation therefore animates rather than jumping.
+**`scroll-behavior: smooth` is set globally** in `globals.css` (`* { scroll-behavior: smooth }`). Anchor navigation therefore animates rather than jumping. The root `<html>` also carries `data-scroll-behavior="smooth"` — Next.js 16 uses it to disable smooth scrolling during route transitions (it warns in the console without it).
 
-**Images:** there are none. All visuals are CSS gradients, SVG and divs. Adding images means adding to `next.config.ts` (or `<Image>`) — no image pipeline is configured yet.
+**Images:** the public site uses `next/image` for the logo and hero (local files, no remote hosts configured). Course thumbnails in the dashboard are arbitrary URLs and render with `unoptimized`, which bypasses the remote-host allowlist — if you switch them to optimised `next/image`, add the host to `next.config.ts` and validate the URL server-side.
 
 ---
 
@@ -458,11 +496,411 @@ Notes for the backend:
 
 - No backend, no API calls, no environment variables
 - Contact form submission is not wired to anything
-- `/login`, `/dashboard` and `/employees` are placeholder markup
+- The dashboard runs on in-browser mock services (see [§11.7](#117-security-limits-of-the-prototype))
+- `/employees` is placeholder markup
 - `src/components/layout/Sidebar.tsx` and `src/data/mock/courses.ts` are empty placeholders
-- No test suite, no CI, no error boundary, no loading states
+- No test suite, no CI, no error boundary
 - No analytics, no cookie consent, no SEO metadata beyond titles and descriptions
-- No image assets or `next/image` usage
+- No image assets or `next/image` usage on the public site
+
+---
+
+## 11. Admin dashboard
+
+The internal workspace lives in the same Next.js app as the public site: same design tokens, same component library, same build. It is a separate route group under `/dashboard`, behind a sign-in screen at `/login`.
+
+Everything it shows today is **demo data**. Nothing is sent anywhere, nothing is stored on a server, and no real Vision Upgrade person, course or conversation is represented.
+
+### 11.1 Demo sign-in
+
+| Username      | Role                | Account status |
+| ------------- | ------------------- | -------------- |
+| `demo.owner`  | Owner               | Active         |
+| `demo.admin`  | Administrator       | Active         |
+| `demo.editor` | Content editor      | Active         |
+
+**Password: any value of 8 characters or more — for example `demo1234`.**
+
+All three accounts accept that same "password", and it is not a credential. There is no password stored, hashed, compared or seeded anywhere in this repository, and no password is written to `localStorage`, `sessionStorage` or any `NEXT_PUBLIC_*` variable. The demo auth adapter only checks that the username exists in the seed data and that the account is active; the form itself enforces the 8-character minimum. This is deliberate: a fake password would teach the wrong lesson about what security means. See [§11.7](#117-security-limits-of-the-prototype) for what has to change before real use.
+
+> **Session behaviour:** the session is a JavaScript variable in the tab. Reloading the page signs you out. That is intentional — there is no cookie to forge in the prototype.
+
+### 11.2 Running the dashboard
+
+Nothing extra to install or configure:
+
+```bash
+bun install
+bun run dev
+# open http://localhost:3000/login
+```
+
+Sign in with `demo.owner` and any 8+ character password. The public site stays available at `/`.
+
+### 11.3 Screens
+
+| Screen | Route | What works |
+| ------ | ----- | ---------- |
+| Overview | `/dashboard` | Total administrator accounts (with active/disabled split), total courses (with draft/published split), recent course activity, recent admin activity, quick actions. All counts are derived from the service layer, not hardcoded. |
+| Admin accounts | `/dashboard/accounts` | Debounced search, role/status filters, sortable columns, pagination with page sizes, create, edit, enable/disable behind a confirmation dialog, loading/empty/error/success states. |
+| Courses | `/dashboard/courses` | Search, category/status filters, create/edit with validation, draft ↔ published, detail drawer, optional thumbnail URL. |
+| Company chat | `/dashboard/chat` | Conversation list, search, message history, composer and send, timestamps, sender names, empty/loading/error states. Messages are mock and never delivered. |
+| Settings | `/dashboard/settings` | The signed-in account, the prototype's limits, and the steps needed for a real deployment. |
+
+Every screen carries a demo-data notice. Activity feeds are **derived**, not logged: course activity is ordered by `updatedAt`, admin activity by `lastActiveAt ?? createdAt`. That keeps the prototype honest — there is no fabricated audit trail.
+
+### 11.4 Architecture
+
+The rule is the same as the public site's, applied to data instead of copy:
+
+> **Components never import demo data.** They receive it through a service contract.
+
+```
+src/
+├── app/
+│   ├── (auth)/login/page.tsx          # /login
+│   └── dashboard/
+│       ├── layout.tsx                 # mounts the shell + providers
+│       ├── page.tsx                   # overview
+│       ├── accounts/page.tsx
+│       ├── courses/page.tsx
+│       ├── chat/page.tsx
+│       └── settings/page.tsx
+│
+├── components/
+│   ├── auth/                          # session context, guard, sign-in form
+│   ├── dashboard/                     # shell: sidebar, header, search, notifications
+│   ├── admin/                         # accounts feature
+│   ├── courses/                       # courses feature
+│   ├── chat/                          # chat feature
+│   ├── settings/                      # settings feature
+│   └── ui/                            # shadcn/ui primitives (see ATTRIBUTION.md)
+│
+├── lib/
+│   ├── services/contracts.ts          # ← the backend seam (interfaces + request types)
+│   ├── services/index.ts              # DashboardServices aggregate
+│   ├── providers/service-context.tsx  # ← the single mock → HTTP swap point
+│   ├── providers/mock/                # demo adapters + in-memory store
+│   ├── validation/schemas.ts          # zod schemas shared by every form
+│   ├── labels.ts                      # role/status/category display labels
+│   └── format.ts                      # dates and relative time
+│
+└── types/dashboard.ts                 # domain models (transport agnostic)
+```
+
+Dependency direction, top to bottom:
+
+```
+page → feature component → useServices() → ServiceContract → provider (mock | HTTP) → API
+```
+
+No feature component imports `src/lib/providers/mock/*`, no provider imports a component, and `src/types/dashboard.ts` imports nothing.
+
+### 11.5 The service contract
+
+`src/lib/services/contracts.ts` is the whole integration surface. A provider must implement these four interfaces; nothing else in the app needs to change.
+
+```ts
+export interface AuthService {
+  getSession(): Promise<SessionUser | null>;
+  signIn(request: SignInRequest): Promise<ServiceResult<SessionUser>>;
+  signOut(): Promise<void>;
+}
+
+export interface AdministratorService {
+  list(query?: AdministratorListQuery): Promise<ServiceResult<AdministratorListResponse>>;
+  create(request: CreateAdministratorRequest): Promise<ServiceResult<AdministratorAccount>>;
+  update(id: string, request: UpdateAdministratorRequest): Promise<ServiceResult<AdministratorAccount>>;
+  setStatus(id: string, status: AccountStatus): Promise<ServiceResult<AdministratorAccount>>;
+}
+
+export interface CourseService {
+  list(query?: CourseListQuery): Promise<ServiceResult<CourseListResponse>>;
+  get(id: string): Promise<ServiceResult<Course>>;
+  create(request: CreateCourseRequest): Promise<ServiceResult<Course>>;
+  update(id: string, request: UpdateCourseRequest): Promise<ServiceResult<Course>>;
+}
+
+export interface ChatService {
+  listConversations(query?: ConversationListQuery): Promise<ServiceResult<ConversationListResponse>>;
+  listMessages(conversationId: string): Promise<ServiceResult<ChatMessage[]>>;
+  sendMessage(conversationId: string, body: string): Promise<ServiceResult<ChatMessage>>;
+}
+```
+
+Every call returns `ServiceResult<T>`:
+
+```ts
+type ServiceResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: ServiceError };
+
+type ServiceError = {
+  code: 'unauthorized' | 'forbidden' | 'not_found' | 'validation' | 'conflict' | 'network' | 'unknown';
+  message: string;                       // safe to render, never server internals
+  fieldErrors?: Record<string, string[]>; // per-field, keyed by form field name
+};
+```
+
+That shape is what lets the UI render loading, empty, error and field-level validation states without knowing whether the data came from memory or HTTP.
+
+### 11.6 Connecting a real backend
+
+The prototype is structured so this is additive. There is no fake API server to delete: replace the provider, delete the demo seed, done.
+
+#### 11.6.1 Step 1 — environment variables
+
+Server-only values, never prefixed with `NEXT_PUBLIC_`:
+
+```bash
+# .env.local  (never committed)
+API_URL=https://api.visionupgrade.com
+SESSION_COOKIE_NAME=vu_session
+```
+
+`API_URL` is read only in server code (route handlers / server actions). The browser must never receive a token or a database URL.
+
+#### 11.6.2 Step 2 — make the session server-side
+
+Today `AuthService` lives entirely in the browser. In production the browser should only ever hold an opaque, `HttpOnly` cookie. Two viable layouts:
+
+- **BFF (recommended here):** keep Next.js route handlers under `src/app/api/*`; they talk to your API with a secret and set the cookie. The browser only sees same-origin URLs.
+- **Direct API:** the dashboard calls your API directly and the API sets the cookie (`SameSite=None; Secure`, CORS with credentials).
+
+Either way the login endpoint must:
+
+1. accept credentials over HTTPS only;
+2. look the account up by username, and run a constant-time comparison against a **server-side hash** (Argon2id, scrypt or bcrypt — never SHA-256 alone);
+3. return the **same generic error** for unknown username, wrong password and disabled account;
+4. rate-limit by IP and by username, with a lockout or backoff;
+5. create an opaque session id, store it server-side, and set the cookie:
+
+```ts
+// src/app/api/session/route.ts  (BFF example)
+import { cookies } from 'next/headers';
+import { z } from 'zod';
+
+const bodySchema = z.object({ username: z.string().min(3), password: z.string().min(8) });
+
+export async function POST(request: Request) {
+  const parsed = bodySchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return Response.json({ error: 'Invalid request' }, { status: 400 });
+  }
+
+  const upstream = await fetch(`${process.env.API_URL}/sessions`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(parsed.data),
+    cache: 'no-store',
+  });
+
+  if (!upstream.ok) {
+    // Same message for every credential failure — never leak which part was wrong.
+    return Response.json(
+      { error: 'We could not sign you in with those details.' },
+      { status: 401 },
+    );
+  }
+
+  const { sessionId, user } = await upstream.json();
+  const jar = await cookies();
+
+  jar.set(process.env.SESSION_COOKIE_NAME ?? 'vu_session', sessionId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 8,
+  });
+
+  return Response.json({ user });
+}
+
+export async function DELETE() {
+  const jar = await cookies();
+  jar.delete(process.env.SESSION_COOKIE_NAME ?? 'vu_session');
+  return new Response(null, { status: 204 });
+}
+```
+
+Then the HTTP `AuthService` becomes three `fetch` calls with `credentials: 'include'`, and `getSession()` maps a `401` to `null`:
+
+```ts
+// src/lib/providers/http/http-auth.service.ts
+import type { AuthService, SignInRequest, ServiceResult } from '@/lib/services/contracts';
+import { serviceFail, serviceOk } from '@/lib/services/contracts';
+import type { SessionUser } from '@/types/dashboard';
+
+export function createHttpAuthService(): AuthService {
+  return {
+    async getSession() {
+      const response = await fetch('/api/session', { credentials: 'include', cache: 'no-store' });
+      if (response.status === 401) return null;
+      if (!response.ok) throw new Error('Session check failed');
+      return (await response.json()).user as SessionUser;
+    },
+
+    async signIn(request: SignInRequest): Promise<ServiceResult<SessionUser>> {
+      const response = await fetch('/api/session', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(request),
+        credentials: 'include',
+      });
+
+      if (response.status === 401) {
+        return serviceFail('unauthorized', 'We could not sign you in with those details.');
+      }
+      if (!response.ok) {
+        return serviceFail('network', 'Sign-in is temporarily unavailable. Try again.');
+      }
+
+      return serviceOk((await response.json()).user as SessionUser);
+    },
+
+    async signOut() {
+      await fetch('/api/session', { method: 'DELETE', credentials: 'include' });
+    },
+  };
+}
+```
+
+> `getSession()` is already what `AuthGuard` waits on, so replacing this one file is enough to make every protected page check the server on load.
+
+#### 11.6.3 Step 3 — administrator accounts
+
+Endpoints the service expects (BFF paths shown; map them to whatever your API exposes):
+
+| Method | Path | Body / query | Returns |
+| ------ | ---- | ------------ | ------- |
+| `GET` | `/api/administrators` | `search`, `role`, `status`, `page`, `pageSize`, `sortBy`, `sortDirection` | `{ items, total, page, pageSize }` |
+| `POST` | `/api/administrators` | `{ name, username, role }` | the created account |
+| `PATCH` | `/api/administrators/:id` | `{ name, username, role }` | the updated account |
+| `PATCH` | `/api/administrators/:id/status` | `{ status: 'active' \| 'disabled' }` | the updated account |
+
+Server rules that the UI cannot enforce:
+
+- **Authorisation.** Only `owner` may create accounts or change roles; only `owner`/`administrator` may enable or disable; nobody may disable the last active owner, and nobody may escalate their own role.
+- **No passwords in create/update.** Provision a credential with an invitation email or a server-generated single-use token. The dashboard deliberately has no password field.
+- **Uniqueness.** `username` is the login identifier — enforce a case-insensitive unique index and map a conflict to `409` → `ServiceError.code = 'conflict'`.
+- **Pagination and sorting happen server-side.** The table is written for it; `total` must be the count *after* filters, not the page length.
+- **Audit log.** Record actor, action, target and timestamp server-side. Do not trust a client-supplied actor id.
+
+An HTTP implementation follows the shape shown in §11.6.2:
+
+```ts
+// src/lib/providers/http/http-administrators.service.ts
+const json = { 'content-type': 'application/json' };
+
+async function parse<T>(response: Response): Promise<ServiceResult<T>> {
+  if (response.ok) return serviceOk((await response.json()) as T);
+
+  const body = await response.json().catch(() => ({}));
+  const code =
+    response.status === 401 ? 'unauthorized'
+    : response.status === 403 ? 'forbidden'
+    : response.status === 404 ? 'not_found'
+    : response.status === 409 ? 'conflict'
+    : response.status === 422 ? 'validation'
+    : 'unknown';
+
+  return serviceFail(code, body.message ?? 'Something went wrong. Try again.', body.fieldErrors);
+}
+
+export function createHttpAdministratorService(): AdministratorService {
+  return {
+    async list(query = {}) {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(query)) {
+        if (value !== undefined && value !== 'all') params.set(key, String(value));
+      }
+      return parse(await fetch(`/api/administrators?${params}`, { credentials: 'include', cache: 'no-store' }));
+    },
+    async create(request) {
+      return parse(await fetch('/api/administrators', { method: 'POST', headers: json, credentials: 'include', body: JSON.stringify(request) }));
+    },
+    async update(id, request) {
+      return parse(await fetch(`/api/administrators/${id}`, { method: 'PATCH', headers: json, credentials: 'include', body: JSON.stringify(request) }));
+    },
+    async setStatus(id, status) {
+      return parse(await fetch(`/api/administrators/${id}/status`, { method: 'PATCH', headers: json, credentials: 'include', body: JSON.stringify({ status }) }));
+    },
+  };
+}
+```
+
+#### 11.6.4 Step 4 — courses
+
+| Method | Path | Body / query | Returns |
+| ------ | ---- | ------------ | ------- |
+| `GET` | `/api/courses` | `search`, `category`, `status` | `{ items, total }` |
+| `GET` | `/api/courses/:id` | — | one course |
+| `POST` | `/api/courses` | `{ title, description, category, status, thumbnailUrl }` | the created course |
+| `PATCH` | `/api/courses/:id` | same body | the updated course |
+
+Server rules:
+
+- **Validate with the same zod schema** (`src/lib/validation/schemas.ts`) before writing. Client validation is feedback, not a guarantee.
+- **Set `publishedAt` server-side** when `status` flips to `published`, and clear it on unpublish. Never accept it from the client.
+- **Own `createdAt` / `updatedAt`** on the server; the activity feeds order by `updatedAt`, so a client-supplied clock breaks them.
+- **Thumbnails** are URLs today. If uploads are added, use a signed upload endpoint and store an object key, then expand `thumbnailUrl` to a full URL when serialising.
+- **Publishing is a privileged action** — check the session role on the server, not in the UI.
+
+Implementation mirrors the accounts service (same `parse` helper), so the file is roughly thirty lines.
+
+#### 11.6.5 Step 5 — swap the provider
+
+One file changes:
+
+```tsx
+// src/lib/providers/service-context.tsx
+import { createHttpServices } from './http';   // was: createMockServices
+
+export function ServicesProvider({ children }: ServicesProviderProps) {
+  const services = React.useMemo(() => createHttpServices(), []);
+  return <ServicesContext.Provider value={services}>{children}</ServicesContext.Provider>;
+}
+```
+
+Because every screen calls `useServices()`, no feature component, dialog or table needs to change. Then delete `src/lib/providers/mock/` and the demo notice, and remove the username hints from the sign-in screen.
+
+#### 11.6.6 Step 6 — re-check authorisation everywhere
+
+The client guard in `src/components/auth/auth-guard.tsx` is a **navigation convenience**, not a security boundary. A request can always be replayed outside the browser. Every endpoint must:
+
+- resolve the session from the `HttpOnly` cookie itself;
+- return `401` for a missing/expired session and `403` for an insufficient role;
+- re-read the account's role and status on each request, so disabling an account takes effect immediately;
+- never accept a user id, role or actor name from the request body.
+
+If you add server-rendered dashboard pages later, check the session in the layout too (`cookies()` plus your API), so a stale tab cannot render data it no longer has access to.
+
+#### 11.6.7 Go-live checklist
+
+- [ ] Real `AuthService` backed by a server session cookie (`HttpOnly`, `Secure`, `SameSite`)
+- [ ] Passwords hashed with Argon2id/bcrypt; credentials never logged
+- [ ] Rate limiting and lockout on sign-in
+- [ ] `AdministratorService` + `CourseService` HTTP providers, server-side validation and authorisation
+- [ ] Invitation flow for new administrators (no password typed into the dashboard)
+- [ ] Audit logging for account and publishing changes
+- [ ] Demo seed data, demo usernames and demo notices removed
+- [ ] HTTPS enforced, security headers set, `NEXT_PUBLIC_*` free of secrets
+- [ ] Error tracking and uptime monitoring
+
+### 11.7 Security limits of the prototype
+
+Be explicit with stakeholders:
+
+- **No credential verification.** Any 8+ character password works with an existing, active username. This is not authentication.
+- **Sessions do not survive a reload.** The session lives in React state; there is no cookie to steal — and no cookie to trust.
+- **The guard is client-side.** `AuthGuard` redirects the UI; it protects no data. Nothing here should be exposed to the public internet with real data behind it.
+- **No persistence.** Accounts, courses and chat messages live in an in-memory store that resets on reload.
+- **No authorisation model.** Every signed-in demo user sees the same screens; role labels are display-only. A real build must enforce permissions on the server *and* hide unavailable actions in the UI.
+- **Chat is fiction.** The conversations are labelled demo data, messages are stored in memory, and sending one reaches nobody.
+- **No password storage anywhere.** There is no password field in the account model (`CreateAdministratorRequest` has none), no password in the seed data, and no password in browser storage.
+
+`ATTRIBUTION.md` records the licences of the UI components and libraries used by the shell.
 
 ---
 

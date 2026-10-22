@@ -1,5 +1,6 @@
 import { ArrowLink } from '@/components/ui/ArrowLink';
 import { Icon } from '@/components/ui/Icon';
+import { Reveal } from '@/components/ui/Reveal';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import type { AboutProps } from '@/types/types';
 
@@ -7,73 +8,109 @@ export const About = ({
   eyebrow,
   title,
   description,
-  card,
-  content,
-  values,
-}: AboutProps) => {
-  return (
-    <section id="about" className="scroll-mt-24 bg-white py-20 sm:py-24">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
-        <SectionHeading eyebrow={eyebrow} title={title} description={description} />
+  body,
+  pillars,
+  points,
+  cta,
+}: AboutProps) => (
+  <section
+    id="about"
+    className="scroll-mt-24 bg-white py-20 sm:py-24 lg:py-32"
+    aria-labelledby="about-title"
+  >
+    <div className="mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-12">
+      <div className="grid gap-14 lg:grid-cols-12 lg:gap-16">
+        <div className="lg:col-span-7">
+          <Reveal>
+            <div id="about-title">
+              <SectionHeading
+                eyebrow={eyebrow}
+                title={title}
+                description={description}
+              />
+            </div>
+          </Reveal>
 
-        <div className="mt-16 grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-          <div className="relative">
-            <div
+          <Reveal delay={80}>
+            <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
+              {body}
+            </p>
+          </Reveal>
+
+          <ul className="mt-10 grid gap-6 sm:grid-cols-3">
+            {points.map((point, index) => (
+              <li key={point.id}>
+                <Reveal delay={120 + index * 70}>
+                  <span
+                    aria-hidden="true"
+                    className="block h-0.5 w-10 bg-linear-to-r from-brand to-brand-deep"
+                  />
+                  <p className="mt-4 font-bold text-navy">{point.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {point.description}
+                  </p>
+                </Reveal>
+              </li>
+            ))}
+          </ul>
+
+          <Reveal delay={200}>
+            <div className="mt-10">
+              <ArrowLink href={cta.href} tone="navy">
+                {cta.label}
+              </ArrowLink>
+            </div>
+          </Reveal>
+        </div>
+
+        <Reveal delay={120} className="lg:col-span-5">
+          <div className="relative mx-auto w-full max-w-md lg:max-w-none">
+            <span
               aria-hidden="true"
-              className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-blue-100 to-indigo-100 blur-2xl"
+              className="pointer-events-none absolute -inset-4 rounded-[2.25rem] bg-linear-to-br from-brand/12 to-brand-deep/10 blur-2xl"
             />
-            <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-blue-700 via-blue-800 to-slate-900 p-8 text-white shadow-2xl shadow-blue-900/20 sm:p-10">
-              <p className="text-sm font-semibold uppercase tracking-widest text-blue-200">
-                {card.eyebrow}
+            <div className="relative rounded-[1.75rem] border border-line bg-surface p-7 sm:p-8">
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-2.5 rounded-full bg-brand"
+                />
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
+                  One organisation
+                </p>
+              </div>
+              <p className="mt-3 text-2xl font-black leading-tight text-navy">
+                Vision Upgrade
               </p>
-              <blockquote className="mt-4 text-xl font-bold leading-snug sm:text-2xl">
-                {card.quote}
-              </blockquote>
-              <p className="mt-4 text-sm leading-relaxed text-blue-50/90">
-                {card.body}
+              <p className="mt-2 text-sm text-muted-foreground">
+                Three practices, one shared standard.
               </p>
 
-              <dl className="mt-8 grid grid-cols-3 gap-4 border-t border-white/15 pt-6">
-                {card.stats.map((stat) => (
-                  <div key={stat.id}>
-                    <dd className="text-2xl font-bold">{stat.value}</dd>
-                    <dt className="text-xs font-medium uppercase tracking-wide text-blue-50/80">
-                      {stat.label}
-                    </dt>
-                  </div>
+              <ul className="mt-8">
+                {pillars.map((pillar, index) => (
+                  <li key={pillar.id} className="relative flex gap-5 pb-8 last:pb-0">
+                    {index < pillars.length - 1 ? (
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-5 top-11 h-[calc(100%-2.5rem)] w-px bg-line"
+                      />
+                    ) : null}
+                    <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-tint text-brand-ink">
+                      <Icon name={pillar.icon} className="h-5 w-5" />
+                    </span>
+                    <div className="pt-0.5">
+                      <p className="font-bold text-navy">{pillar.label}</p>
+                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                        {pillar.caption}
+                      </p>
+                    </div>
+                  </li>
                 ))}
-              </dl>
+              </ul>
             </div>
           </div>
-
-          <div>
-            <h3 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              {content.title}
-            </h3>
-            <p className="mt-4 text-base leading-relaxed text-slate-600">
-              {content.description}
-            </p>
-
-            <ul className="mt-8 space-y-5">
-              {values.map((value) => (
-                <li key={value.id} className="flex gap-4">
-                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
-                    <Icon name={value.icon} className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h4 className="font-bold text-slate-900">{value.title}</h4>
-                    <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                      {value.description}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            <ArrowLink cta={content.link} className="mt-10" />
-          </div>
-        </div>
+        </Reveal>
       </div>
-    </section>
-  );
-};
+    </div>
+  </section>
+);

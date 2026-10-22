@@ -1,58 +1,51 @@
 import type { AboutProps } from '@/types/types';
 
 export const AboutSection: AboutProps = {
-  eyebrow: 'About Vision',
-  title: 'A platform built around how teams actually work',
+  eyebrow: 'About Vision Upgrade',
+  title: 'Where education, technology and marketing meet.',
   description:
-    'Vision Upgrade started as an internal tool for reading factory floors. Today it helps operations, safety and quality teams turn every camera into a source of truth.',
-  card: {
-    eyebrow: 'Our approach',
-    quote:
-      'Every model we ship has to survive a real production week, not a demo.',
-    body: 'That principle shapes how we evaluate accuracy, how we design fallbacks, and why we publish the confidence behind every prediction.',
-    stats: [
-      { id: 1, label: 'Founded', value: '2019' },
-      { id: 2, label: 'Team', value: '48' },
-      { id: 3, label: 'Sites', value: '23' },
-    ],
-  },
-  content: {
-    title: 'What you get with Vision Upgrade',
-    description:
-      'We handle the heavy parts of shipping machine vision: dataset curation, training infrastructure, evaluation harnesses and low-latency inference. You keep focus on the decisions that move your business.',
-    link: {
-      label: 'Talk to our team',
-      href: '/contact',
-    },
-  },
-  values: [
+    'Vision Upgrade was built on a simple idea: the same curiosity that drives a child to take something apart is what drives a good engineer or a sharp campaign.',
+  body:
+    'The three parts of the company feed each other. What our learning programs teach young people about how technology works shows up in how we build software. What we learn about attention and storytelling in marketing shapes how that software is presented to the people who use it. Keeping all three in one company means the feedback loop is short and the quality bar is shared.',
+  pillars: [
     {
       id: 1,
-      icon: 'shield',
-      title: 'Accuracy you can audit',
-      description:
-        'Every prediction ships with a confidence score and a full audit trail, so teams can verify outcomes before they act on them.',
+      icon: 'cap',
+      label: 'Education',
+      caption: 'Learning that starts with doing',
     },
     {
       id: 2,
-      icon: 'zap',
-      title: 'Built for production',
-      description:
-        'Edge and cloud runtimes are tuned for real-time throughput, with graceful degradation when the network drops.',
+      icon: 'code',
+      label: 'Technology',
+      caption: 'Software we build and maintain',
     },
     {
       id: 3,
-      icon: 'cpu',
-      title: 'Privacy by default',
-      description:
-        'Data stays inside your perimeter, and retention, residency and access policies are configurable per workspace.',
-    },
-    {
-      id: 4,
-      icon: 'layers',
-      title: 'Grows with your use cases',
-      description:
-        'Start with a single camera feed and expand to multi-site deployments without rewriting a line of pipeline code.',
+      icon: 'megaphone',
+      label: 'Marketing',
+      caption: 'Clear, creative, measurable',
     },
   ],
+  points: [
+    {
+      id: 1,
+      title: 'One company, three perspectives',
+      description:
+        'Educators, engineers and marketers sit in the same organisation and plan together.',
+    },
+    {
+      id: 2,
+      title: 'Built for real use',
+      description:
+        'Everything we teach, build or campaign is designed to work beyond a demo.',
+    },
+    {
+      id: 3,
+      title: 'Open about what is next',
+      description:
+        'Programmes and products are shaped with the people who use them.',
+    },
+  ],
+  cta: { label: 'Talk to Vision Upgrade', href: '/#contact' },
 };

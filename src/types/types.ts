@@ -1,14 +1,32 @@
 export type IconName =
-  | 'scan'
+  | 'arrowRight'
+  | 'spark'
+  | 'cap'
+  | 'blocks'
+  | 'code'
   | 'cpu'
-  | 'shield'
-  | 'zap'
-  | 'chart'
   | 'layers'
+  | 'cloud'
+  | 'megaphone'
+  | 'chart'
+  | 'trending'
+  | 'share'
+  | 'cursor'
+  | 'book'
+  | 'lightbulb'
+  | 'target'
   | 'mail'
   | 'phone'
   | 'mapPin'
-  | 'clock';
+  | 'clock'
+  | 'linkedin'
+  | 'twitter'
+  | 'instagram'
+  | 'facebook'
+  | 'youtube'
+  | 'check'
+  | 'plus'
+  | 'menu';
 
 export type NavLink = {
   id: number;
@@ -16,103 +34,127 @@ export type NavLink = {
   href: string;
 };
 
-export type NavbarProps = {
-  links?: NavLink[];
-};
-
-export type Stat = {
-  id: number;
-  label: string;
-  value: string;
-};
-
 export type CallToAction = {
   label: string;
   href: string;
 };
 
-export type SectionHeadingProps = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  align?: 'left' | 'center';
+export type BrandAssets = {
+  name: string;
+  mark: string;
+  wordmark: string;
+  wordmarkLight: string;
+  full: string;
 };
 
-export type Detection = {
+export type NavbarProps = {
+  brand: BrandAssets;
+  links: NavLink[];
+  cta: CallToAction;
+};
+
+export type HeroRow = {
   id: number;
+  icon: IconName;
   label: string;
-  confidence: number;
-  box: {
-    left: string;
-    top: string;
-    width: string;
-    height: string;
-  };
-  borderClass: string;
-  labelClass: string;
-};
-
-export type Metric = {
-  id: number;
-  label: string;
-  value: number;
-  barClass: string;
-};
-
-export type HeroVisual = {
-  status: string;
   caption: string;
-  detections: Detection[];
-  metrics: Metric[];
+  /** Percentage width of the accent bar, 0-100. */
+  fill: number;
+};
+
+export type HeroBadge = {
+  id: number;
+  icon: IconName;
+  label: string;
+  value: string;
 };
 
 export type HeroProps = {
-  badge: string;
-  badgeActive: boolean;
+  brand: BrandAssets;
+  eyebrow: string;
   title: string;
   titleAccent: string;
   description: string;
   primaryCta: CallToAction;
   secondaryCta: CallToAction;
-  stats: Stat[];
-  visual: HeroVisual;
+  visual: {
+    title: string;
+    status: string;
+    rows: HeroRow[];
+    badge: HeroBadge;
+  };
+  pillars: {
+    id: number;
+    icon: IconName;
+    title: string;
+    description: string;
+  }[];
 };
 
-export type FeatureItem = {
+export type ProgramSummary = {
   id: number;
+  index: string;
   icon: IconName;
   title: string;
   description: string;
+  href: string;
+};
+
+export type ProgramsIntroProps = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  items: ProgramSummary[];
+};
+
+export type ProgramFeature = {
+  id: number;
+  title: string;
+  description: string;
+};
+
+export type ProgramProps = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  icon: IconName;
+  features: ProgramFeature[];
+  cta: CallToAction;
+  secondaryCta?: CallToAction;
+  /** Short label used inside the decorative visual */
+  visual: {
+    label: string;
+    headline: string;
+    items: { id: number; icon: IconName; title: string; caption: string }[];
+  };
 };
 
 export type AboutProps = {
   eyebrow: string;
   title: string;
   description: string;
-  card: {
-    eyebrow: string;
-    quote: string;
-    body: string;
-    stats: Stat[];
-  };
-  content: {
-    title: string;
-    description: string;
-    link: CallToAction;
-  };
-  values: FeatureItem[];
+  body: string;
+  pillars: {
+    id: number;
+    icon: IconName;
+    label: string;
+    caption: string;
+  }[];
+  points: { id: number; title: string; description: string }[];
+  cta: CallToAction;
 };
 
-export type ServicesProps = {
+export type WhyUsProps = {
   eyebrow: string;
   title: string;
   description: string;
-  items: FeatureItem[];
-  cta: {
+  items: {
+    id: number;
+    icon: IconName;
     title: string;
     description: string;
-    link: CallToAction;
-  };
+  }[];
 };
 
 export type ContactDetail = {
@@ -123,16 +165,17 @@ export type ContactDetail = {
   href?: string;
 };
 
-export type FormField = {
+export type FormFieldConfig = {
   id: string;
   name: string;
   label: string;
-  type: 'text' | 'email' | 'tel' | 'textarea';
+  type: 'text' | 'email' | 'tel' | 'textarea' | 'select';
   placeholder: string;
   required: boolean;
   autoComplete?: string;
   rows?: number;
   fullWidth?: boolean;
+  options?: { id: number; label: string }[];
 };
 
 export type ContactProps = {
@@ -140,17 +183,26 @@ export type ContactProps = {
   title: string;
   description: string;
   details: ContactDetail[];
-  sideCard: {
-    title: string;
-    description: string;
-    link: CallToAction;
-  };
+  /** Shown when the listed details are placeholders rather than verified channels. */
+  detailsNotice?: string;
+  notes: { id: number; title: string; description: string }[];
   form: {
+    /**
+     * `demo` keeps everything on the client and states plainly that no
+     * backend is wired up. `api` posts to `endpoint` instead.
+     */
+    mode: 'demo' | 'api';
+    endpoint?: string;
     submitLabel: string;
+    submittingLabel: string;
     successTitle: string;
     successMessage: string;
+    demoNotice: string;
+    errorTitle: string;
+    errorMessage: string;
+    retryLabel: string;
     resetLabel: string;
-    fields: FormField[];
+    fields: FormFieldConfig[];
   };
 };
 
@@ -160,11 +212,28 @@ export type FooterColumn = {
   links: NavLink[];
 };
 
+export type SocialLink = {
+  id: number;
+  icon: IconName;
+  label: string;
+  href: string;
+};
+
 export type FooterProps = {
-  initial: string;
+  brand: BrandAssets;
   name: string;
   description: string;
   columns: FooterColumn[];
+  socials: SocialLink[];
   copyright: string;
-  tagline: string;
+  legal: NavLink[];
+};
+
+export type SectionHeadingProps = {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  align?: 'left' | 'center';
+  tone?: 'light' | 'dark';
+  id?: string;
 };

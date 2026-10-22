@@ -1,29 +1,35 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
-
 export const metadata: Metadata = {
-  title: 'Vision Upgrade',
-  description: 'Internel System for Vision Upgrade',
+  title: {
+    default: 'Vision Upgrade — Technology, Education & Digital Growth',
+    template: '%s | Vision Upgrade',
+  },
+  description:
+    'Vision Upgrade (VUSoft) works across three areas: VU Kids learning programs for young learners, our own software and technology solutions, and digital marketing that helps brands grow online.',
+  keywords: [
+    'Vision Upgrade',
+    'VUSoft',
+    'VU Kids',
+    'software development',
+    'technology solutions',
+    'digital marketing',
+    'education programs',
+  ],
+  openGraph: {
+    title: 'Vision Upgrade — Technology, Education & Digital Growth',
+    description:
+      'Three connected practices: VU Kids learning programs, Vision Upgrade software and technology solutions, and digital marketing.',
+    type: 'website',
+    siteName: 'Vision Upgrade',
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth">
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }

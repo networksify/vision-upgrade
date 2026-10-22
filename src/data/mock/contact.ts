@@ -1,10 +1,19 @@
 import type { ContactProps } from '@/types/types';
 
+/**
+ * Contact content.
+ *
+ * NOTE: the repository does not contain any verified company contact details,
+ * so the values below are clearly marked placeholders and `detailsNotice`
+ * surfaces that on the page. Replace them with real channels before launch.
+ */
 export const ContactSection: ContactProps = {
-  eyebrow: 'Contact Us',
-  title: 'Let us look at your use case',
+  eyebrow: 'Contact',
+  title: 'Let’s build something worth upgrading.',
   description:
-    'Tell us what you want to detect, measure or automate. A solution engineer will reply with a concrete next step within one business day.',
+    'Tell us about your program, product or campaign and we will come back with a clear next step — no hard sell, no vague promises.',
+  detailsNotice:
+    'Contact details below are placeholders. Replace them with verified channels before launch.',
   details: [
     {
       id: 1,
@@ -17,73 +26,107 @@ export const ContactSection: ContactProps = {
       id: 2,
       icon: 'phone',
       label: 'Phone',
-      value: '+1 (555) 014-2200',
-      href: 'tel:+15550142200',
+      value: '+00 000 000 0000',
+      href: 'tel:+00000000000',
     },
     {
       id: 3,
       icon: 'mapPin',
-      label: 'Head office',
-      value: '240 Innovation Drive, San Francisco, CA',
+      label: 'Studio',
+      value: 'Address to be confirmed',
     },
     {
       id: 4,
       icon: 'clock',
-      label: 'Support hours',
-      value: 'Monday to Friday, 9:00 to 18:00 PST',
+      label: 'Hours',
+      value: 'Monday – Friday, 09:00 – 18:00',
     },
   ],
-  sideCard: {
-    title: 'Prefer a live walkthrough?',
-    description:
-      'We run a 30-minute demo every week with a sample feed, so you can see detections running end to end.',
-    link: {
-      label: 'Create an account',
-      href: '/login',
+  notes: [
+    {
+      id: 1,
+      title: 'Replies within two working days',
+      description:
+        'Every enquiry is read by a person and answered with a concrete proposal.',
     },
-  },
+    {
+      id: 2,
+      title: 'A short call before a long proposal',
+      description:
+        'We start by understanding the problem, then suggest the smallest useful next step.',
+    },
+    {
+      id: 3,
+      title: 'No obligation',
+      description:
+        'You will get a clear recommendation, including when the answer is not to work with us.',
+    },
+  ],
   form: {
+    // `demo` keeps the form entirely on the client. The success state says
+    // plainly that nothing was transmitted instead of pretending to send.
+    mode: 'demo',
     submitLabel: 'Send message',
-    successTitle: 'Message received',
+    submittingLabel: 'Sending…',
+    successTitle: 'Thanks — your message is ready to send.',
     successMessage:
-      'Thanks for reaching out. A solution engineer will get back to you within one business day.',
-    resetLabel: 'Send another message',
+      'This site is running without a contact backend, so nothing was transmitted. Use the email address on the left to reach us, or ask your developer to connect the form to an API endpoint.',
+    demoNotice:
+      'Demo mode: this form validates in the browser but is not connected to a server yet.',
+    errorTitle: 'Something went wrong.',
+    errorMessage:
+      'Your message could not be sent. Please try again, or email us directly.',
+    retryLabel: 'Try again',
+    resetLabel: 'Write another message',
     fields: [
       {
-        id: 'contact-name',
+        id: 'name',
         name: 'name',
-        label: 'Your name',
+        label: 'Full name',
         type: 'text',
-        placeholder: 'Jordan Reyes',
+        placeholder: 'Your name',
         required: true,
         autoComplete: 'name',
       },
       {
-        id: 'contact-email',
+        id: 'email',
         name: 'email',
-        label: 'Work email',
+        label: 'Email address',
         type: 'email',
-        placeholder: 'jordan@company.com',
+        placeholder: 'you@company.com',
         required: true,
         autoComplete: 'email',
       },
       {
-        id: 'contact-company',
-        name: 'company',
-        label: 'Company',
-        type: 'text',
-        placeholder: 'Acme Industries',
+        id: 'phone',
+        name: 'phone',
+        label: 'Phone',
+        type: 'tel',
+        placeholder: 'Optional',
         required: false,
-        autoComplete: 'organization',
-        fullWidth: true,
+        autoComplete: 'tel',
       },
       {
-        id: 'contact-message',
+        id: 'interest',
+        name: 'interest',
+        label: 'I am interested in',
+        type: 'select',
+        placeholder: 'Choose an area',
+        required: true,
+        fullWidth: true,
+        options: [
+          { id: 1, label: 'VU Kids — education programs' },
+          { id: 2, label: 'Vision Upgrade — software & technology' },
+          { id: 3, label: 'Digital marketing & branding' },
+          { id: 4, label: 'Something else' },
+        ],
+      },
+      {
+        id: 'message',
         name: 'message',
-        label: 'How can we help?',
+        label: 'Message',
         type: 'textarea',
-        placeholder:
-          'We want to detect defective parts on two production lines...',
+        placeholder: 'Tell us about your goals, timing and budget range.',
         required: true,
         rows: 5,
         fullWidth: true,

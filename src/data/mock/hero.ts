@@ -1,60 +1,66 @@
 import type { HeroProps } from '@/types/types';
+import { Brand } from '@/data/mock/navbar';
 
 export const HeroSection: HeroProps = {
-  badge: 'AI Vision Platform',
-  badgeActive: true,
-  title: 'Give your cameras the power to',
-  titleAccent: 'understand',
+  brand: Brand,
+  eyebrow: 'Technology · Education · Digital growth',
+  title: 'Technology that teaches, builds and',
+  titleAccent: 'grows businesses',
   description:
-    'Vision Upgrade turns raw video into decisions. Deploy production-ready models that detect, classify and act on what happens on the floor, in the warehouse and around the site.',
-  primaryCta: {
-    label: 'Get in Touch',
-    href: '/contact',
-  },
-  secondaryCta: {
-    label: 'Explore Services',
-    href: '/#services',
-  },
-  stats: [
-    { id: 1, label: 'Models deployed', value: '240+' },
-    { id: 2, label: 'Frames analysed daily', value: '18M' },
-    { id: 3, label: 'Average accuracy', value: '99.2%' },
-    { id: 4, label: 'Enterprise clients', value: '120+' },
-  ],
+    'Vision Upgrade runs three connected practices: hands-on learning programs for young learners through VU Kids, our own software and technology solutions, and digital marketing that turns attention into measurable growth.',
+  primaryCta: { label: 'Explore Our Programs', href: '/#programs' },
+  secondaryCta: { label: 'Contact Us', href: '/#contact' },
   visual: {
-    status: 'Live feed',
-    caption: 'Feed 01 - Line A - 1080p',
-    detections: [
+    title: 'Vision Upgrade',
+    status: 'Three practices, one standard',
+    rows: [
       {
         id: 1,
-        label: 'Person 0.98',
-        confidence: 0.98,
-        box: { left: '16%', top: '22%', width: '30%', height: '44%' },
-        borderClass: 'border-blue-400',
-        labelClass: 'bg-blue-700',
+        icon: 'cap',
+        label: 'VU Kids',
+        caption: 'Learning programs for young minds',
+        fill: 92,
       },
       {
         id: 2,
-        label: 'Helmet 0.94',
-        confidence: 0.94,
-        box: { left: '58%', top: '50%', width: '24%', height: '30%' },
-        borderClass: 'border-emerald-400',
-        labelClass: 'bg-emerald-700',
-      },
-    ],
-    metrics: [
-      {
-        id: 1,
-        label: 'Detection accuracy',
-        value: 98,
-        barClass: 'bg-blue-600',
+        icon: 'code',
+        label: 'Vision Upgrade',
+        caption: 'Software and technology solutions',
+        fill: 78,
       },
       {
-        id: 2,
-        label: 'Pipeline latency',
-        value: 24,
-        barClass: 'bg-emerald-500',
+        id: 3,
+        icon: 'megaphone',
+        label: 'Digital Marketing',
+        caption: 'Content, campaigns and growth',
+        fill: 84,
       },
     ],
+    badge: {
+      id: 1,
+      icon: 'trending',
+      label: 'Digital growth',
+      value: 'Built to scale',
+    },
   },
+  pillars: [
+    {
+      id: 1,
+      icon: 'cap',
+      title: 'Education',
+      description: 'Structured, practical learning programs for kids.',
+    },
+    {
+      id: 2,
+      icon: 'code',
+      title: 'Technology',
+      description: 'Software products and solutions we build ourselves.',
+    },
+    {
+      id: 3,
+      icon: 'megaphone',
+      title: 'Marketing',
+      description: 'Digital strategies that move brands forward.',
+    },
+  ],
 };

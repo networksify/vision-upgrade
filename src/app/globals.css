@@ -1,14 +1,263 @@
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;500;600;700;900&display=swap');
 @import 'tailwindcss';
+@import 'tw-animate-css';
+
+/*
+ * Dark mode is class-driven (`@custom-variant dark`) rather than driven by the
+ * operating system preference, so the dashboard stays on the Vision Upgrade
+ * light palette no matter how the visitor's device is configured.
+ */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Vendored from `shadcn/tailwind.css` (shadcn/ui, MIT License,
+ * Copyright (c) 2023 shadcn). The upstream file ships inside the `shadcn` CLI
+ * package, which pulls Babel and MSW into the runtime dependency tree purely
+ * to provide these ~50 lines of CSS. Only the custom variants and the
+ * scrollbar utility that the installed components actually use are kept here.
+ * See ATTRIBUTION.md for the full licence text.
+ */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-open]:not([data-open='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']),
+  &:where([data-closed]:not([data-closed='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']),
+  &:where([data-checked]:not([data-checked='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-unchecked {
+  &:where([data-state='unchecked']),
+  &:where([data-unchecked]:not([data-unchecked='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-selected {
+  &:where([data-selected='true']) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled='true']),
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-active {
+  &:where([data-state='active']),
+  &:where([data-active]:not([data-active='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
 
 @theme {
   --font-sans: 'Lato', sans-serif;
+  --font-heading: 'Lato', sans-serif;
+
+  /* Brand palette */
+  --color-navy: #171447;
+  --color-navy-deep: #0b0926;
+  --color-navy-soft: #221d5e;
+  --color-navy-line: #322b7d;
+  --color-brand: #ff7900;
+  --color-brand-deep: #f02b16;
+  /* Gradient end used by navy-on-orange buttons (4.85:1 against navy text). */
+  --color-brand-warm: #f5491f;
+  /* Accessible accent for small text on light surfaces (5.7:1 on white). */
+  --color-brand-ink: #c42a12;
+  --color-brand-tint: #fff3e8;
+  --color-surface: #f7f8fc;
+  --color-line: #e5e7f0;
+  /*
+   * Muted body text. The token was renamed from `--color-muted` because
+   * `muted` is reserved by the shadcn component layer for subtle surfaces.
+   */
+  --color-muted-foreground: #686b7a;
 }
 
-* {
-  scroll-behavior: smooth;
+/*
+ * Semantic variables consumed by the shadcn component layer. They are mapped
+ * onto the Vision Upgrade palette rather than the shadcn defaults so the
+ * dashboard reads as part of the public site: navy chrome, orange actions.
+ */
+:root {
+  --background: #ffffff;
+  --foreground: #171447;
+  --card: #ffffff;
+  --card-foreground: #171447;
+  --popover: #ffffff;
+  --popover-foreground: #171447;
+  /* Orange with navy text: 6.5:1, unlike white on orange which is only 2.6:1. */
+  --primary: #ff7900;
+  --primary-foreground: #171447;
+  --secondary: #f7f8fc;
+  --secondary-foreground: #171447;
+  --muted: #f7f8fc;
+  --accent: #fff3e8;
+  --accent-foreground: #171447;
+  /* Darkened red-orange so destructive labels clear 4.5:1 on a light surface. */
+  --destructive: #c42a12;
+  --border: #e5e7f0;
+  --input: #e5e7f0;
+  /* Navy focus ring keeps a 17:1 contrast against the light dashboard surface. */
+  --ring: #171447;
+  /*
+   * Base radius for the shadcn component layer only. The Tailwind radius
+   * scale (`rounded-sm` … `rounded-4xl`) is deliberately left at its default
+   * values so the public website keeps its current corners.
+   */
+  --radius: 0.625rem;
+  --sidebar: #171447;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ff7900;
+  --sidebar-primary-foreground: #171447;
+  --sidebar-accent: #221d5e;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #322b7d;
+  --sidebar-ring: #ff7900;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    @apply font-sans;
+  }
 }
 
 body {
   font-family: 'Lato', sans-serif;
+  color: var(--color-navy);
+  background-color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth scrolling for in-page anchors. */
+* {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--color-brand) 25%, transparent);
+}
+
+/*
+ * Dashboard focus ring. Scoped with `:has()` to the dashboard and sign-in
+ * shells so the public site's own focus treatment is untouched, and drawn with
+ * `currentColor` so it stays legible on both the white content area and the
+ * navy sidebar.
+ */
+body:has([data-slot='sidebar-wrapper']) :focus-visible,
+body:has([data-slot='vu-auth-shell']) :focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Scroll reveal — see src/components/ui/Reveal.tsx */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Without JavaScript the observer never runs, so nothing may stay hidden. */
+@media (scripting: none) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
 }

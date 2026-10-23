@@ -1,18 +1,21 @@
 "use client";
 
-import * as React from 'react';
+import * as React from "react";
 
-import { useServices } from '@/lib/providers/service-context';
-import type { SessionUser } from '@/types/dashboard';
+import { useServices } from "@/lib/providers/service-context";
+import type { SessionUser } from "@/types/dashboard";
 
-export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 export type SignInOutcome = { ok: true } | { ok: false; message: string };
 
 type AuthContextValue = {
   status: AuthStatus;
   user: SessionUser | null;
-  signIn: (credentials: { username: string; password: string }) => Promise<SignInOutcome>;
+  signIn: (credentials: {
+    username: string;
+    password: string;
+  }) => Promise<SignInOutcome>;
   signOut: () => Promise<void>;
 };
 
@@ -37,7 +40,7 @@ type AuthProviderProps = {
  */
 export function AuthProvider({ children }: AuthProviderProps) {
   const { auth } = useServices();
-  const [status, setStatus] = React.useState<AuthStatus>('loading');
+  const [status, setStatus] = React.useState<AuthStatus>("loading");
   const [user, setUser] = React.useState<SessionUser | null>(null);
 
   React.useEffect(() => {
@@ -46,7 +49,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     void auth.getSession().then((session) => {
       if (!active) return;
       setUser(session);
-      setStatus(session ? 'authenticated' : 'unauthenticated');
+      setStatus(session ? "authenticated" : "unauthenticated");
     });
 
     return () => {
@@ -54,7 +57,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [auth]);
 
-  const signIn = React.useCallback<AuthContextValue['signIn']>(
+  const signIn = React.useCallback<AuthContextValue["signIn"]>(
     async (credentials) => {
       const result = await auth.signIn(credentials);
 
@@ -63,7 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       setUser(result.data);
-      setStatus('authenticated');
+      setStatus("authenticated");
       return { ok: true };
     },
     [auth],
@@ -72,7 +75,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signOut = React.useCallback(async () => {
     await auth.signOut();
     setUser(null);
-    setStatus('unauthenticated');
+    setStatus("unauthenticated");
   }, [auth]);
 
   const value = React.useMemo<AuthContextValue>(
@@ -87,7 +90,7 @@ export function useAuth(): AuthContextValue {
   const context = React.useContext(AuthContext);
 
   if (!context) {
-    throw new Error('useAuth must be used inside an <AuthProvider>.');
+    throw new Error("useAuth must be used inside an <AuthProvider>.");
   }
 
   return context;

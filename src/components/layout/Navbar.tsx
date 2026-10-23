@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/ui/Logo';
 import { Icon } from '@/components/ui/Icon';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { getTranslation } from '@/lib/i18n/translations';
 import type { NavbarProps } from '@/types/types';
 
 const anchorId = (href: string) => {
@@ -12,13 +15,24 @@ const anchorId = (href: string) => {
 };
 
 export const Navbar = ({ brand, links, cta }: NavbarProps) => {
+  const { language } = useLanguage();
+  const t = getTranslation(language);
+  const translatedLinks = [
+    { id: 1, title: t.nav.home, href: '/#home' },
+    { id: 2, title: t.nav.vuKids, href: '/#vu-kids' },
+    { id: 3, title: t.nav.visionUpgrade, href: '/#vision-upgrade' },
+    { id: 4, title: t.nav.digitalMarketing, href: '/#digital-marketing' },
+    { id: 5, title: t.nav.about, href: '/#about' },
+    { id: 6, title: t.nav.contact, href: '/#contact' },
+  ];
+  const translatedCta = { label: t.nav.explorePrograms, href: '/#programs' };
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeId, setActiveId] = useState<string>('');
 
   const sectionIds = useMemo(
-    () => links.map((link) => anchorId(link.href)).filter(Boolean),
-    [links],
+    () => translatedLinks.map((link) => anchorId(link.href)).filter(Boolean),
+    [translatedLinks],
   );
 
   useEffect(() => {
@@ -63,7 +77,7 @@ export const Navbar = ({ brand, links, cta }: NavbarProps) => {
 
         <nav aria-label="Primary" className="hidden lg:block">
           <ul className="flex items-center gap-7">
-            {links.map((link) => {
+            {translatedLinks.map((link) => {
               const id = anchorId(link.href);
               const isActive = id !== '' && id === activeId;
               return (
@@ -90,16 +104,17 @@ export const Navbar = ({ brand, links, cta }: NavbarProps) => {
         </nav>
 
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <Link
-            href={cta.href}
+            href={translatedCta.href}
             className="hidden rounded-full bg-linear-to-r from-brand to-brand-warm px-5 py-2.5 text-sm font-bold text-navy shadow-[0_12px_26px_-14px_rgba(240,43,22,0.95)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-14px_rgba(240,43,22,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 lg:inline-flex"
           >
-            {cta.label}
+            {translatedCta.label}
           </Link>
 
           <button
             type="button"
-            aria-label={isOpen ? 'Close menu' : 'Open menu'}
+            aria-label={isOpen ? (language === 'ar' ? 'إغلاق القائمة' : 'Close menu') : (language === 'ar' ? 'فتح القائمة' : 'Open menu')}
             aria-expanded={isOpen}
             aria-controls="mobile-navigation"
             onClick={() => setIsOpen((open) => !open)}
@@ -118,11 +133,11 @@ export const Navbar = ({ brand, links, cta }: NavbarProps) => {
         id="mobile-navigation"
         aria-label="Mobile"
         className={`overflow-hidden border-t border-line bg-white transition-[max-height,opacity] duration-300 ease-out lg:hidden ${
-          isOpen ? 'max-h-[32rem] opacity-100' : 'max-h-0 opacity-0'
+          isOpen ? 'max-h-[40rem] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
         <ul className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-5 py-4 sm:px-8">
-          {links.map((link) => (
+          {translatedLinks.map((link) => (
             <li key={link.id}>
               <Link
                 href={link.href}
@@ -135,14 +150,17 @@ export const Navbar = ({ brand, links, cta }: NavbarProps) => {
               </Link>
             </li>
           ))}
+          <li className="px-3 py-2">
+            <LanguageSwitcher />
+          </li>
           <li className="pt-2">
             <Link
-              href={cta.href}
+              href={translatedCta.href}
               onClick={close}
               tabIndex={isOpen ? 0 : -1}
               className="flex items-center justify-center rounded-xl bg-linear-to-r from-brand to-brand-warm px-5 py-3 text-base font-bold text-navy transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
             >
-              {cta.label}
+              {translatedCta.label}
             </Link>
           </li>
         </ul>

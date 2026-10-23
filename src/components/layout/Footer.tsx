@@ -1,6 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import { Logo } from '@/components/ui/Logo';
 import { Icon } from '@/components/ui/Icon';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { getTranslation } from '@/lib/i18n/translations';
 import type { FooterProps } from '@/types/types';
 
 export const Footer = ({
@@ -12,6 +16,9 @@ export const Footer = ({
   copyright,
   legal,
 }: FooterProps) => {
+  const { language } = useLanguage();
+  const t = getTranslation(language);
+  
   return (
     <footer className="relative overflow-hidden bg-navy text-white">
       <span
@@ -28,7 +35,7 @@ export const Footer = ({
           <div className="lg:col-span-5">
             <Logo brand={brand} variant="light" />
             <p className="mt-6 max-w-md text-sm leading-relaxed text-white/65 sm:text-base">
-              {description}
+              {t.footer.description}
             </p>
 
             {socials.length > 0 ? (
@@ -51,14 +58,14 @@ export const Footer = ({
           </div>
 
           <div className="grid gap-10 sm:grid-cols-2 lg:col-span-6 lg:col-start-7">
-            {columns.map((column) => (
-              <div key={column.id}>
+            {t.footer.columns.map((column, idx) => (
+              <div key={idx}>
                 <h2 className="text-xs font-bold uppercase tracking-[0.22em] text-brand">
                   {column.title}
                 </h2>
                 <ul className="mt-5 space-y-3">
-                  {column.links.map((link) => (
-                    <li key={`${column.id}-${link.id}`}>
+                  {column.links.map((link, linkIdx) => (
+                    <li key={linkIdx}>
                       <Link
                         href={link.href}
                         className="text-sm text-white/70 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-navy sm:text-base"
@@ -74,9 +81,9 @@ export const Footer = ({
         </div>
 
         <div className="mt-14 flex flex-col gap-4 border-t border-white/10 pt-7 text-xs text-white/65 sm:flex-row sm:items-center sm:justify-between sm:text-sm">
-          <p>{copyright}</p>
+          <p>{t.footer.copyright}</p>
 
-          {legal.length > 0 ? (
+          {legal && legal.length > 0 ? (
             <ul className="flex flex-wrap items-center gap-5">
               {legal.map((link) => (
                 <li key={link.id}>

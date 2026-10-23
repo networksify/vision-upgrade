@@ -1,39 +1,20 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { BookOpenIcon, MessagesSquareIcon, UsersIcon } from 'lucide-react';
+"use client";
 
-import { LoginForm } from '@/components/auth/login-form';
-import { Logo } from '@/components/ui/Logo';
-import { Brand } from '@/data/brand';
+import Link from "next/link";
+import { BookOpenIcon, MessagesSquareIcon, UsersIcon } from "lucide-react";
 
-export const metadata: Metadata = {
-  title: 'Sign in',
-  description: 'Sign in to the Vision Upgrade internal dashboard.',
-};
-
-/** What the dashboard holds. Deliberately plain: no invented metrics. */
-const DASHBOARD_SECTIONS = [
-  {
-    icon: UsersIcon,
-    title: 'Administrator accounts',
-    description: 'Invite colleagues, adjust roles and switch access on and off.',
-  },
-  {
-    icon: BookOpenIcon,
-    title: 'Course catalogue',
-    description: 'Prepare drafts and publish the courses VU Kids and clients rely on.',
-  },
-  {
-    icon: MessagesSquareIcon,
-    title: 'Company chat',
-    description: 'Keep day to day conversations in one place with the rest of the team.',
-  },
-];
-
-// Solve render problem - Value can be change and make some issues in application
-const year = new Date().getFullYear();
+import { LoginForm } from "@/components/auth/login-form";
+import { Logo } from "@/components/ui/Logo";
+import { Brand } from "@/data/brand";
+import { useLanguage } from "@/lib/i18n/language-context";
+import { authTranslations } from "@/lib/i18n/translations";
 
 export default function LoginPage() {
+  const { language } = useLanguage();
+  const t = authTranslations[language];
+  const year = new Date().getFullYear();
+  const icons = [UsersIcon, BookOpenIcon, MessagesSquareIcon];
+  
   return (
     <main
       data-slot="vu-auth-shell"
@@ -63,30 +44,36 @@ export default function LoginPage() {
 
         <div className="relative max-w-lg">
           <h1 className="text-4xl leading-tight font-bold text-white">
-            The internal workspace for Vision Upgrade.
+            {t.loginPage.title}
           </h1>
           <p className="mt-4 text-base leading-relaxed text-white/70">
-            Manage administrator accounts, publish courses and talk to the team — all from one
-            place.
+            {t.loginPage.subtitle}
           </p>
 
           <ul className="mt-10 flex flex-col gap-5">
-            {DASHBOARD_SECTIONS.map((section) => (
-              <li key={section.title} className="flex items-start gap-3.5">
-                <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand/15 text-brand">
-                  <section.icon className="size-4.5" aria-hidden="true" />
-                </span>
-                <span>
-                  <span className="block text-sm font-semibold text-white">{section.title}</span>
-                  <span className="mt-0.5 block text-sm text-white/60">{section.description}</span>
-                </span>
-              </li>
-            ))}
+            {t.loginPage.sections.map((section, idx) => {
+              const IconComp = icons[idx];
+              return (
+                <li key={section.title} className="flex items-start gap-3.5">
+                  <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand/15 text-brand">
+                    <IconComp className="size-4.5" aria-hidden="true" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-white">
+                      {section.title}
+                    </span>
+                    <span className="mt-0.5 block text-sm text-white/60">
+                      {section.description}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
         <p className="relative text-xs text-white/45">
-          © {year} Vision Upgrade. Internal use only.
+          {t.loginPage.copyright}
         </p>
       </section>
 
@@ -103,7 +90,7 @@ export default function LoginPage() {
             href="/"
             className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-navy hover:underline"
           >
-            Back to the website
+            {t.loginPage.backToWebsite}
           </Link>
         </div>
 
@@ -127,7 +114,7 @@ export default function LoginPage() {
             href="/"
             className="text-sm text-muted-foreground underline-offset-4 hover:text-navy hover:underline"
           >
-            Back to the Vision Upgrade website
+            {t.loginPage.backToWebsiteLong}
           </Link>
         </div>
       </section>

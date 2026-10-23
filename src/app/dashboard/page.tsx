@@ -1,10 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata } from "next";
 
-import { OverviewDashboard } from '@/components/dashboard/overview-dashboard';
+import { OverviewDashboard } from "@/components/dashboard/overview-dashboard";
 
 export const metadata: Metadata = {
-  title: 'Dashboard overview',
-  description: 'Overview of Vision Upgrade administrator accounts and courses.',
+  title: "Dashboard overview",
+  description: "Overview of Vision Upgrade administrator accounts and courses.",
 };
 
 /*

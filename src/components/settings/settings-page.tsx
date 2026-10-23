@@ -1,59 +1,59 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   DatabaseIcon,
   KeyRoundIcon,
   LogOutIcon,
   ServerIcon,
   ShieldCheckIcon,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { useAuth } from '@/components/auth/auth-provider';
-import { DemoNotice } from '@/components/dashboard/demo-notice';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { useAuth } from "@/components/auth/auth-provider";
+import { DemoNotice } from "@/components/dashboard/demo-notice";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Spinner } from '@/components/ui/spinner';
-import { ROLE_LABELS } from '@/lib/labels';
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
+import { ROLE_LABELS } from "@/lib/labels";
 
 const LIMITATIONS = [
   {
-    title: 'Data lives in memory',
+    title: "Data lives in memory",
     description:
-      'Accounts, courses and messages are held in JavaScript memory. A reload resets every change to the demo seed data.',
+      "Accounts, courses and messages are held in JavaScript memory. A reload resets every change to the demo seed data.",
   },
   {
-    title: 'Sign-in checks nothing',
+    title: "Sign-in checks nothing",
     description:
-      'The demo adapter accepts any non-empty password for a known username. It never compares a credential and never issues a real session.',
+      "The demo adapter accepts any non-empty password for a known username. It never compares a credential and never issues a real session.",
   },
   {
-    title: 'No session cookie',
+    title: "No session cookie",
     description:
-      'The session is React state only. Refreshing the page signs you out, because a browser-held flag is not an authorisation boundary.',
+      "The session is React state only. Refreshing the page signs you out, because a browser-held flag is not an authorisation boundary.",
   },
   {
-    title: 'Nothing leaves the browser',
+    title: "Nothing leaves the browser",
     description:
-      'There is no API server behind this build. No request is sent anywhere, and no real Vision Upgrade data is involved.',
+      "There is no API server behind this build. No request is sent anywhere, and no real Vision Upgrade data is involved.",
   },
 ] as const;
 
 const PRODUCTION_STEPS = [
-  'Replace the mock providers in src/lib/providers with HTTP implementations of the same service contracts.',
-  'Authenticate over HTTPS and store the session in an HttpOnly, Secure, SameSite cookie set by the server.',
-  'Hash and verify passwords server-side, and re-check the caller’s role before every privileged mutation.',
-  'Send new administrators an invitation so no password is ever typed into or stored by the browser.',
-  'Add a re-authenticated password change flow, plus audit logging for account and course changes.',
+  "Replace the mock providers in src/lib/providers with HTTP implementations of the same service contracts.",
+  "Authenticate over HTTPS and store the session in an HttpOnly, Secure, SameSite cookie set by the server.",
+  "Hash and verify passwords server-side, and re-check the caller’s role before every privileged mutation.",
+  "Send new administrators an invitation so no password is ever typed into or stored by the browser.",
+  "Add a re-authenticated password change flow, plus audit logging for account and course changes.",
 ] as const;
 
 /** Account and workspace settings, with an honest statement of limits. */
@@ -65,19 +65,21 @@ export function SettingsPage() {
   const handleSignOut = async () => {
     setSigningOut(true);
     await signOut();
-    router.replace('/login');
+    router.replace("/login");
   };
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <DemoNotice>
-        Everything on this page describes the prototype build. Treat it as a preview of the
-        dashboard, not as a production security posture.
+        Everything on this page describes the prototype build. Treat it as a
+        preview of the dashboard, not as a production security posture.
       </DemoNotice>
 
       <Card className="gap-0 border-line bg-white">
         <CardHeader>
-          <CardTitle className="text-base text-navy">Signed-in account</CardTitle>
+          <CardTitle className="text-base text-navy">
+            Signed-in account
+          </CardTitle>
           <CardDescription>
             The demo session associated with this browser tab.
           </CardDescription>
@@ -88,7 +90,7 @@ export function SettingsPage() {
             <>
               <dl className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  <dt className="text-xs font-semibol tracking-wide text-muted-foreground uppercase">
                     Name
                   </dt>
                   <dd className="mt-1 text-sm text-foreground">{user.name}</dd>
@@ -97,7 +99,9 @@ export function SettingsPage() {
                   <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     Username
                   </dt>
-                  <dd className="mt-1 font-mono text-sm text-foreground">{user.username}</dd>
+                  <dd className="mt-1 font-mono text-sm text-foreground">
+                    {user.username}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -114,7 +118,10 @@ export function SettingsPage() {
                     Session
                   </dt>
                   <dd className="mt-1">
-                    <Badge variant="secondary" className="bg-brand-tint text-brand-ink hover:bg-brand-tint">
+                    <Badge
+                      variant="secondary"
+                      className="bg-brand-tint text-brand-ink hover:bg-brand-tint"
+                    >
                       Demo only
                     </Badge>
                   </dd>
@@ -158,12 +165,13 @@ export function SettingsPage() {
 
         <CardContent>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            A password form on the client cannot change a password: it would have to collect the
-            current and new secret in the browser, which is exactly what this prototype refuses to
-            do. Password changes belong to the backend, where the request can be authenticated,
-            re-authenticated and rate limited. When that backend exists, this card becomes the entry
-            point for the real flow — until then it stays a written note rather than a form that
-            only pretends to work.
+            A password form on the client cannot change a password: it would
+            have to collect the current and new secret in the browser, which is
+            exactly what this prototype refuses to do. Password changes belong
+            to the backend, where the request can be authenticated,
+            re-authenticated and rate limited. When that backend exists, this
+            card becomes the entry point for the real flow — until then it stays
+            a written note rather than a form that only pretends to work.
           </p>
         </CardContent>
       </Card>
@@ -188,7 +196,9 @@ export function SettingsPage() {
                   className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand-ink"
                 />
                 <div>
-                  <p className="text-sm font-semibold text-navy">{limitation.title}</p>
+                  <p className="text-sm font-semibold text-navy">
+                    {limitation.title}
+                  </p>
                   <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
                     {limitation.description}
                   </p>
@@ -218,9 +228,12 @@ export function SettingsPage() {
           </ol>
 
           <div className="mt-5 flex items-start gap-3 rounded-lg border border-line bg-surface p-3.5">
-            <DatabaseIcon className="mt-0.5 size-4 shrink-0 text-navy" aria-hidden="true" />
+            <DatabaseIcon
+              className="mt-0.5 size-4 shrink-0 text-navy"
+              aria-hidden="true"
+            />
             <p className="text-sm text-muted-foreground">
-              Components, forms and pages all talk to the interfaces in{' '}
+              Components, forms and pages all talk to the interfaces in{" "}
               <code className="rounded bg-white px-1 py-0.5 font-mono text-xs text-navy">
                 src/lib/services/contracts.ts
               </code>

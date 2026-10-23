@@ -27,6 +27,8 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { Brand } from '@/data/brand';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { dashboardTranslations } from '@/lib/i18n/translations';
 
 /**
  * Navigation model for the dashboard shell.
@@ -34,49 +36,57 @@ import { Brand } from '@/data/brand';
  * `href` values are plain routes so the active state can be derived from the
  * current pathname without any client state.
  */
-export const DASHBOARD_NAV_SECTIONS = [
-  {
-    label: 'Workspace',
-    items: [
-      {
-        title: 'Dashboard overview',
-        href: '/dashboard',
-        icon: LayoutDashboardIcon,
-      },
-      {
-        title: 'Admin accounts',
-        href: '/dashboard/accounts',
-        icon: UsersIcon,
-      },
-      {
-        title: 'Courses',
-        href: '/dashboard/courses',
-        icon: BookOpenIcon,
-      },
-      {
-        title: 'Company chat',
-        href: '/dashboard/chat',
-        icon: MessagesSquareIcon,
-      },
-    ],
-  },
-  {
-    label: 'Manage',
-    items: [
-      {
-        title: 'Settings',
-        href: '/dashboard/settings',
-        icon: SettingsIcon,
-      },
-    ],
-  },
-] as const;
+export const getDashboardNavSections = (lang: 'en' | 'ar') => {
+  const t = dashboardTranslations[lang];
+  return [
+    {
+      label: t.sidebar.workspace,
+      items: [
+        {
+          title: t.sidebar.dashboard,
+          href: '/dashboard',
+          icon: LayoutDashboardIcon,
+        },
+        {
+          title: t.sidebar.accounts,
+          href: '/dashboard/accounts',
+          icon: UsersIcon,
+        },
+        {
+          title: t.sidebar.courses,
+          href: '/dashboard/courses',
+          icon: BookOpenIcon,
+        },
+        {
+          title: t.sidebar.chat,
+          href: '/dashboard/chat',
+          icon: MessagesSquareIcon,
+        },
+      ],
+    },
+    {
+      label: t.sidebar.manage,
+      items: [
+        {
+          title: t.sidebar.settings,
+          href: '/dashboard/settings',
+          icon: SettingsIcon,
+        },
+      ],
+    },
+  ] as const;
+};
+
+export const DASHBOARD_NAV_SECTIONS = getDashboardNavSections('en');
 
 export const isNavItemActive = (href: string, pathname: string): boolean =>
   href === '/dashboard' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const { language } = useLanguage();
+  const t = dashboardTranslations[language];
+  const navSections = getDashboardNavSections(language);
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -88,7 +98,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               size="lg"
               className="data-[slot=sidebar-menu-button]:p-2!"
             >
-              <Link href="/dashboard" aria-label="Vision Upgrade dashboard home">
+              <Link href="/dashboard" aria-label={t.sidebar.home}>
                 <Logo
                   brand={Brand}
                   variant="light"
@@ -105,7 +115,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        {DASHBOARD_NAV_SECTIONS.map((section) => (
+        {navSections.map((section) => (
           <SidebarGroup key={section.label}>
             <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
             <SidebarGroupContent>
